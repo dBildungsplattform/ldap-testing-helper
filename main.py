@@ -1,5 +1,6 @@
 import os
 from migrate_schools import migrate_school_data
+from migrate_persons import migrate_person_data
 
 
 def main():
@@ -12,6 +13,12 @@ def main():
         inputLDAP = os.environ['MIGRATION_SCHOOLS_INPUT_LDAP_COMPLETE_PATH']
 
         migrate_school_data(postEndpoint, getOeffAndErsatzUUIDEndpoint, inputExcel, inputLDAP)
+        
+    if migrationType == 'PERSONS':
+        postEndpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT']
+        inputLDAP = os.environ['MIGRATION_PERSONS_INPUT_LDAP_COMPLETE_PATH']
+
+        migrate_person_data(postEndpoint, inputLDAP)
         
     print("Main execution finished.")
 

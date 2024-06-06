@@ -46,3 +46,8 @@ def get_is_school_object(parsedDN):
     if ('ou' in parsedDN) and ('uid' not in parsedDN) and ('cn' not in parsedDN) and ('dc' in parsedDN) and (parsedDN['dc'][0] == 'schule-sh') and (parsedDN['dc'][1] == 'de'):
         return True
     return False
+
+def get_is_uid_object(parsedDN):
+    if 'uid' in parsedDN:
+        return True
+    return False

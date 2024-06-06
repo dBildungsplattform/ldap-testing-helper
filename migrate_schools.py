@@ -41,6 +41,8 @@ def migrate_school_data(post_endpoint, get_oeff_and_ersatz_UUID_endpoint, input_
         raise ValueError("Input path for LDAP cannot be null or empty")
     
     access_token = get_access_token()
+    if access_token == None:
+        raise ValueError("Could Not Get Access Token")
     headers = {
         'Content-Type': 'application/json; charset=utf-8',
         'Authorization': 'Bearer ' + access_token
