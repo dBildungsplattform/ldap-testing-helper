@@ -57,7 +57,7 @@ def migrate_person_data(create_person_post_endpoint, create_kontext_post_endpoin
                 
         (email, sn, given_name, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         filtered_memberOf = [mo for mo in memberOf_list if mo.startswith(('lehrer-', 'schueler-', 'admin-'))]       
-        is_skip_because_lehreradmin = ('#admin' in (sn or '').lower()) and ('sekadmin' not in (username or '').lower()) and ('extadmin' not in (username or '').lower())
+        is_skip_because_lehreradmin = ('#admin' in (sn or '').lower()) and ('sekadmin' not in (username or '').lower()) and ('extadmin' not in (username or '').lower()) #PRÜFUNG FUNKTIONIERT NUR IN ORIGINALDATEI, ANDERNFALLS MÜSSTE MAN AUF 3 BUCHSTABEN IM VORNAMEN PRÜFEN
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
         is_skip_because_iqsh = 'iqsh' in (sn or '').lower()
         is_skip_because_deactive = any(mo for mo in filtered_memberOf if mo.endswith('DeaktivierteKonten'))

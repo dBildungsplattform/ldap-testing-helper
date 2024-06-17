@@ -1,7 +1,6 @@
 import os
 from migrate_persons.migrate_persons import migrate_person_data
 from migrate_schools import migrate_school_data
-from migrate_persons import migrate_person_data
 
 
 def main():
