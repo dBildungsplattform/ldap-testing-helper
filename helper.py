@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import requests
 from dotenv import load_dotenv
 import ldap.dn
@@ -30,6 +31,46 @@ def get_oeffentlich_and_ersatz_uuid(get_oeff_and_ersatz_UUID_endpoint):
         response = requests.get(get_oeff_and_ersatz_UUID_endpoint, headers=headers)
         response_json = response.json()
         return (response_json.get('oeffentlich').get('id'),response_json.get('ersatz').get('id'))
+    
+def get_school_dnr_uuid_mapping(get_organisation_endpoint):
+        access_token = get_access_token()
+        headers = {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Authorization': 'Bearer ' + access_token
+        }
+        response = requests.get(get_organisation_endpoint+'?typ=SCHULE', headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        df = pd.DataFrame(response_json)
+        df = df[['id', 'kennung']].rename(columns={'kennung': 'dnr'})
+        return df
+    
+def get_rolle_id(get_role_endpoint, name):
+    access_token = get_access_token()
+    headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer ' + access_token
+    }
+    
+    role_map = {
+        'SuS': 'SuS',
+        'Lehrkraft': 'Lehrkraft',
+        'Schuladmin': 'Schuladmin'
+    }
+    
+    if name not in role_map:
+        raise Exception("Invalid Role Name")
+    
+    response = requests.get(f"{get_role_endpoint}?searchStr={role_map[name]}", headers=headers)
+    response.raise_for_status()
+    response_json = response.json()
+    
+    if len(response_json) != 1:
+        raise Exception("Response does not contain exactly one element")
+    
+    return response_json[0].get('id')
+    
+
 
 def parse_dn(dn):
     parsed_dn = ldap.dn.str2dn(dn)
