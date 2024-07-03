@@ -17,8 +17,6 @@ def get_schools_dnr_for_create_schueler_kontext(filtered_memberOf):
 
 def get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf):
     schulbegleitungs_contexts = [mo.split('-', 1)[0] for mo in filtered_memberOf if mo.endswith('-Schulbegleitung')]
-    print("Schulbegleitungs-Kontexts")
-    print(schulbegleitungs_contexts)
     return schulbegleitungs_contexts
 
 def get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf):
@@ -56,6 +54,14 @@ def get_orgaid_by_dnr(df, dnr):
         print(f"No matching id found for dnr: {dnr}")
         return None
     
+def get_orgaid_by_className_and_administriertvon(df, name, administriert_von):
+    result = df.loc[(df['name'] == name) & (df['administriertVon'] == administriert_von), 'id']
+    if not result.empty:
+        return result.iloc[0]
+    else:
+        print(f"No matching id found for classname: {name}")
+        return None
+    
     
 def convert_data_from_row(row, other_log):
         email = row['krb5PrincipalName'].decode('utf-8') if isinstance(row['krb5PrincipalName'], bytes) else row['krb5PrincipalName']
@@ -80,16 +86,17 @@ def convert_data_from_row(row, other_log):
         return (email, sn, given_name, username, hashed_password, memberOf_list)
     
 
-def get_combinded_kontexts_to_create(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung):
+def get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping):
     admin_kontexts = get_schools_dnr_for_create_admin_kontext(filtered_memberOf)
     lehrer_kontexts = get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf)
     schueler_kontexts = get_schools_dnr_for_create_schueler_kontext(filtered_memberOf)
     schuelbegleitungs_kontexts = get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf)
-    combined_kontexts = [{'dnr': dnr, 'roleId': roleid_sus} for dnr in schueler_kontexts]
-    combined_kontexts += [{'dnr': dnr, 'roleId': roleid_lehrkraft} for dnr in lehrer_kontexts]
-    combined_kontexts += [{'dnr': dnr, 'roleId': roleid_schuladmin} for dnr in admin_kontexts]
-    combined_kontexts += [{'dnr': dnr, 'roleId': roleid_schulbegleitung} for dnr in schuelbegleitungs_kontexts]
-    return combined_kontexts
+    combined_school_kontexts = [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_sus} for dnr in schueler_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_lehrkraft} for dnr in lehrer_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schuladmin} for dnr in admin_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schulbegleitung} for dnr in schuelbegleitungs_kontexts]
+    
+    return combined_school_kontexts
 
 def log_skip(skipped_persons, is_skip_because_lehreradmin, is_skip_because_fvmadmin, 
     is_skip_because_iqsh, is_skip_because_deactive_and_not_lehrer, is_skip_because_schueler_without_klasse,
@@ -227,22 +234,29 @@ def print_standard_run_statistics(number_of_found_persons, number_of_total_skipp
                      number_of_fvmadmin_skipped_api_calls, number_of_iqsh_skipped_api_calls, number_of_deactive_skipped_api_calls,
                      number_of_schueler_without_klassen_skipped_api_calls,
                      number_of_deactive_lehrer_api_calls, number_of_create_person_api_calls, number_of_create_person_api_error_responses, 
-                     number_of_create_kontext_api_calls, number_of_create_kontext_api_error_responses):
+                     number_of_create_kontext_api_calls, number_of_create_kontext_api_error_responses, number_of_create_school_kontext_api_calls, 
+                     number_of_create_school_kontext_api_error_responses, number_of_create_class_kontext_api_calls, number_of_create_class_kontext_api_error_responses):
+    print("")
     print("")
     print("###STANDARD RUN STATISTICS###")
     print("")
     print(f"Number of found Persons: {number_of_found_persons}")
     print(f"Number of Total Skipped Persons: {number_of_total_skipped_api_calls}")
-    print(f"                Skipped #ADMIN Persons: {number_of_lehreradmin_skipped_api_calls}")
-    print(f"                Skipped FVM-Admin Persons: {number_of_fvmadmin_skipped_api_calls}")
-    print(f"                Skipped IQSH Persons: {number_of_iqsh_skipped_api_calls}")
-    print(f"                Skipped Deactive Non LehrerPersons: {number_of_deactive_skipped_api_calls}")
-    print(f"                Skipped Schueler Without Klasse: {number_of_schueler_without_klassen_skipped_api_calls}")
+    print(f"                Of That #ADMIN Persons: {number_of_lehreradmin_skipped_api_calls}")
+    print(f"                Of That FVM-Admin Persons: {number_of_fvmadmin_skipped_api_calls}")
+    print(f"                Of That IQSH Persons: {number_of_iqsh_skipped_api_calls}")
+    print(f"                Of That Deactive Non LehrerPersons: {number_of_deactive_skipped_api_calls}")
+    print(f"                Of That Schueler Without Any Klasse: {number_of_schueler_without_klassen_skipped_api_calls}")
     print(f"Number of Create-Person API Calls: {number_of_create_person_api_calls}")
     print(f"                Of That Deactive Lehrer Persons: {number_of_deactive_lehrer_api_calls}")
     print(f'Number of Create-Person API Error Responses: {number_of_create_person_api_error_responses}')
-    print(f"Number of Create-Kontext API Calls: {number_of_create_kontext_api_calls}")
-    print(f'Number of Create-Kontext API Error Responses: {number_of_create_kontext_api_error_responses}')
+    print(f"Number of Total Create-Kontext API Calls: {number_of_create_kontext_api_calls}")
+    print(f"                Of That School Kontexts: {number_of_create_school_kontext_api_calls}")
+    print(f"                Of That Class Kontexts: {number_of_create_class_kontext_api_calls}")
+    print(f'Number of TotalCreate-Kontext API Error Responses: {number_of_create_kontext_api_error_responses}')
+    print(f"                Of That School Kontexts: {number_of_create_school_kontext_api_error_responses}")
+    print(f"                Of That Class Kontexts: {number_of_create_class_kontext_api_error_responses}")
+    print("")
     print("")
     
 def print_merge_run_statistics(number_of_potential_merge_from_admins,number_of_successfully_merged_any_context_from_admin, 
@@ -252,18 +266,19 @@ def print_merge_run_statistics(number_of_potential_merge_from_admins,number_of_s
     print("###MERGE RUN STATISTICS###")
     print("")
     print(f"Number of Potential Mergable Admins: {number_of_potential_merge_from_admins}")
-    print(f"                Of that Any Kontext Has Been Merged Successfully: {number_of_successfully_merged_any_context_from_admin}")
+    print(f"                Of That Any Kontext Has Been Merged Successfully: {number_of_successfully_merged_any_context_from_admin}")
     print(f"Number Where No Coressponding Lehrer Has Been Found: {number_of_no_corressponding_leher_found}")
     print(f"Number Where Coressponding Lehrer Has Been Found, But Is Missing Lehrer Role On Desired Merge School: {number_of_corressponding_lehrer_found_but_missing_school_kontext}")
     print(f"Number Of Total Create Merge Kontext Api Calls: {number_of_create_merge_kontext_api_calls}")
     print(f"Number Of Total Create Merge Kontext Api Error Responses: {number_of_create_merge_kontext_api_error_response}")
     print("")
     
-def create_and_save_log_excel(skipped_persons, failed_responses_create_person, failed_responses_create_kontext, other_log, migration_log):
+def create_and_save_log_excel(skipped_persons, failed_responses_create_person, failed_responses_create_kontext, schueler_on_school_without_klasse, other_log, migration_log):
     # Convert the list of failed responses to a DataFrame and save to an Excel file
     skipped_persons_df = pd.DataFrame(skipped_persons)
     failed_responses_create_person_df = pd.DataFrame(failed_responses_create_person)
     failed_responses_create_kontext_df = pd.DataFrame(failed_responses_create_kontext)
+    schueler_on_school_without_klasse_df = pd.DataFrame(schueler_on_school_without_klasse)
     other_log_df = pd.DataFrame(other_log)
     migration_log_df = pd.DataFrame(migration_log)
     
@@ -275,8 +290,9 @@ def create_and_save_log_excel(skipped_persons, failed_responses_create_person, f
             skipped_persons_df.to_excel(writer, sheet_name='Skipped_Persons', index=False)
             failed_responses_create_person_df.to_excel(writer, sheet_name='Failed_Api_Create_Person', index=False)
             failed_responses_create_kontext_df.to_excel(writer, sheet_name='Failed_Api_Create_Kontext', index=False)
-            other_log_df.to_excel(writer, sheet_name='Other', index=False)
+            schueler_on_school_without_klasse_df.to_excel(writer, sheet_name='Schueler_On_School_No_Class', index=False)
             migration_log_df.to_excel(writer, sheet_name='Migration', index=False)
+            other_log_df.to_excel(writer, sheet_name='Other', index=False)
         print(f"Failed API responses have been saved to '{excel_path}'.")
         print(f"Check the current working directory: {os.getcwd()}")
     except Exception as e:

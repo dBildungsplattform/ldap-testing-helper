@@ -45,6 +45,19 @@ def get_school_dnr_uuid_mapping(get_organisation_endpoint):
         df = df[['id', 'kennung']].rename(columns={'kennung': 'dnr'})
         return df
     
+def get_class_nameAndAdministriertvon_uuid_mapping(get_organisation_endpoint):
+        access_token = get_access_token()
+        headers = {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Authorization': 'Bearer ' + access_token
+        }
+        response = requests.get(get_organisation_endpoint+'?typ=KLASSE', headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        df = pd.DataFrame(response_json)
+        df = df[['id', 'name', 'administriertVon']]
+        return df
+    
 def get_rolle_id(get_role_endpoint, name):
     access_token = get_access_token()
     headers = {

@@ -1,22 +1,28 @@
 import sys
 import pandas as pd
 import requests
-from helper import get_access_token, get_rolle_id, get_school_dnr_uuid_mapping
+from helper import get_access_token, get_class_nameAndAdministriertvon_uuid_mapping, get_rolle_id, get_school_dnr_uuid_mapping
 from datetime import datetime, timedelta
-from migrate_persons.person_helper import convert_data_from_row, create_and_save_log_excel, create_kontext_api_call, create_person_api_call, execute_merge, get_combinded_kontexts_to_create, get_orgaid_by_dnr, log_skip, print_merge_run_statistics, print_standard_run_statistics
+from migrate_persons.person_helper import convert_data_from_row, create_and_save_log_excel, create_kontext_api_call, create_person_api_call, execute_merge, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, get_orgaid_by_dnr, log_skip, print_merge_run_statistics, print_standard_run_statistics
 from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
                 
-def migrate_person_data(create_person_post_endpoint, create_kontext_post_endpoint, input_path_ldap, schools_get_endpoint, roles_get_endpoint, personenkontexte_for_person_get_endpoint):
-    print(f"Start Migration School Data")
+def migrate_person_data(create_person_post_endpoint, create_kontext_post_endpoint, input_path_ldap, orgas_get_endpoint, roles_get_endpoint, personenkontexte_for_person_get_endpoint):
+    print(f"{datetime.now()} :Start Migration School Data")
     
     with open(input_path_ldap, 'rb') as input_file:
         parser = BuildPersonDFLDIFParser(input_file)
         parser.parse()
     df_ldap = pd.DataFrame(parser.entries_list)
+    print(f"{datetime.now()} :Constructed PersonList")
     
-    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(schools_get_endpoint)
-    print('Sucessfully Constructed School UUID / Dnr Mapping:')
+    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(orgas_get_endpoint)
+    print('Successfully Constructed School UUID / Dnr Mapping:')
     print(school_uuid_dnr_mapping)
+    
+    class_nameAndAdministriertvon_uuid_mapping = get_class_nameAndAdministriertvon_uuid_mapping(orgas_get_endpoint)
+    print('Successfully Constructed Class UUID / Name + AdministriertVon Mapping:')
+    print(class_nameAndAdministriertvon_uuid_mapping)
+    
     roleid_sus = get_rolle_id(roles_get_endpoint, 'SuS')
     roleid_schuladmin = get_rolle_id(roles_get_endpoint, 'Schuladmin')
     roleid_lehrkraft = get_rolle_id(roles_get_endpoint, 'Lehrkraft')
@@ -31,8 +37,6 @@ def migrate_person_data(create_person_post_endpoint, create_kontext_post_endpoin
         'Authorization': 'Bearer ' + access_token
     }
     
-    print(f"{datetime.now()} : Starting Api Requests")
-    
     number_of_total_skipped_api_calls = 0
     number_of_lehreradmin_skipped_api_calls = 0
     number_of_fvmadmin_skipped_api_calls = 0
@@ -41,29 +45,39 @@ def migrate_person_data(create_person_post_endpoint, create_kontext_post_endpoin
     number_of_schueler_without_klassen_skipped_api_calls = 0#
     
     number_of_create_person_api_calls = 0
-    number_of_create_kontext_api_calls = 0
     number_of_deactive_lehrer_api_calls = 0
     number_of_create_person_api_error_responses = 0
+    
+    number_of_create_kontext_api_calls = 0
     number_of_create_kontext_api_error_responses = 0
+    
+    number_of_create_school_kontext_api_calls = 0
+    number_of_create_school_kontext_api_error_responses = 0
+    
+    number_of_create_class_kontext_api_calls = 0
+    number_of_create_class_kontext_api_error_responses = 0
     
     # DataFrame to store failed API responses
     skipped_persons = []
     failed_responses_create_person = []
     failed_responses_create_kontext = []
+    schueler_on_school_without_klasse = []
     other_log = []
     
     potential_merge_admins = []
     potential_merge_into_lehrer = []
+    
+    print(f"{datetime.now()} : Starting Api Requests")
 
     for index, row in df_ldap.iterrows():
-        if index % 50 == 0:
+        if index % 20 == 0:
             elapsed_time = datetime.now() - token_acquisition_time
-            if elapsed_time > timedelta(minutes=4):
+            if elapsed_time > timedelta(minutes=3):
                 access_token = get_access_token()
                 headers['Authorization'] = 'Bearer ' + access_token
                 token_acquisition_time = datetime.now()
-                print(f"{datetime.now()} : Refreshed Authorization: {headers['Authorization']}")
-                
+        if index % 100 == 0:
+            print(f"{datetime.now()} : Idx: {index}")
         (email, sn, given_name, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admin-')) or mo.endswith('-Schulbegleitung'))]       
@@ -121,40 +135,77 @@ def migrate_person_data(create_person_post_endpoint, create_kontext_post_endpoin
             continue
         
         #CREATE KONTEXTS FOR PERSON
-#        print(f"Create-Person-Request for row {index} / {parser.number_of_found_persons-1} returned status code {response_create_person.status_code}")
         kontexts_for_merge_into_lehrer = response_create_person.json()
         created_person_id = kontexts_for_merge_into_lehrer.get('person', {}).get('id')
-        combined_kontexts = get_combinded_kontexts_to_create(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung)
-        for kontext in combined_kontexts:
-            orga_id_for_mergefrom_admin = get_orgaid_by_dnr(school_uuid_dnr_mapping, kontext['dnr'])
-            response_create_merge_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, orga_id_for_mergefrom_admin, kontext['roleId'])
+        combined_schul_kontexts = get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping)
+        for schul_kontext in combined_schul_kontexts:
+            response_create_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, schul_kontext['orgaId'], schul_kontext['roleId'])
             number_of_create_kontext_api_calls += 1
-            if response_create_merge_kontext.status_code == 401:
+            number_of_create_school_kontext_api_calls += 1
+            if response_create_kontext.status_code == 401:
                 print(f"{datetime.now()} : Create-Kontext-Request - 401 Unauthorized error")
                 sys.exit()
-            elif response_create_merge_kontext.status_code != 201:
+            elif response_create_kontext.status_code != 201:
                 number_of_create_kontext_api_error_responses += 1
+                number_of_create_school_kontext_api_error_responses += 1
                 failed_responses_create_kontext.append({
                     'username': username,
                     'person_id': created_person_id,
-                    'kontext_orgaId':orga_id_for_mergefrom_admin,
-                    'kontext_roleId': kontext['roleId'],
-                    'error_response_body': response_create_merge_kontext.json(),
-                    'status_code': response_create_merge_kontext.status_code
+                    'kontext_orgaId':schul_kontext['orgaId'],
+                    'kontext_roleId': schul_kontext['roleId'],
+                    'error_response_body': response_create_kontext.json(),
+                    'status_code': response_create_kontext.status_code,
+                    'typ': 'SCHULE_API_ERROR'
                 })
-            else:
-#                print(f"Create-Kontext-Request returned status code {response_create_kontext.status_code}")
-                if(any(mo and 'lehrer' in mo for mo in filtered_memberOf)):
-                    potential_merge_into_lehrer.append({
-                        'username': username,
-                        'person_id': created_person_id,
-                        'kontexts':combined_kontexts
-                    })
+                continue
+            
+            if(any(mo and 'lehrer' in mo for mo in filtered_memberOf)):
+                potential_merge_into_lehrer.append({
+                    'username': username,
+                    'person_id': created_person_id,
+                    'kontexts':combined_schul_kontexts
+                })
+                
+            #KLASSEN FÜR JEDEN SCHULKONTEXT ANLEGEN
+            if schul_kontext['roleId'] == roleid_sus:
+                klassen_on_school = [mo.split('-', 1)[1].strip() for mo in memberOf_list if mo.startswith(schul_kontext['dnr'])]
+                if(len(klassen_on_school) == 0):
+                    schueler_on_school_without_klasse.append({
+                            'username': username,
+                            'person_id': created_person_id,
+                            'school_dnr':schul_kontext['dnr'],
+                            'school_id': schul_kontext['orgaId'],
+                            'description':'The student is at this school, but has no classes here'
+                        })
+                for klasse in klassen_on_school:
+                    orgaId = get_orgaid_by_className_and_administriertvon(class_nameAndAdministriertvon_uuid_mapping, klasse, schul_kontext['orgaId']) #Klasse kann Zweifelfrei über Kombi aus Name + AdministriertVon Identifiziert werden
+                    response_create_class_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, orgaId, roleid_sus)
+                    number_of_create_kontext_api_calls += 1
+                    number_of_create_class_kontext_api_calls += 1
+                    if response_create_class_kontext.status_code == 401:
+                        print(f"{datetime.now()} : Create-Kontext-Request - 401 Unauthorized error")
+                        sys.exit()
+                    elif response_create_class_kontext.status_code != 201:
+                        number_of_create_kontext_api_error_responses += 1
+                        number_of_create_class_kontext_api_error_responses += 1
+                        failed_responses_create_kontext.append({
+                            'username': username,
+                            'person_id': created_person_id,
+                            'kontext_orgaId':orgaId,
+                            'kontext_roleId': roleid_sus,
+                            'error_response_body': response_create_class_kontext.json(),
+                            'status_code': response_create_class_kontext.status_code,
+                            'typ': 'KLASSE_API_ERROR'
+                        })
+                        continue
+                                
+                    
                     
     print_standard_run_statistics(parser.number_of_found_persons, number_of_total_skipped_api_calls, number_of_lehreradmin_skipped_api_calls, 
     number_of_fvmadmin_skipped_api_calls, number_of_iqsh_skipped_api_calls, number_of_deactive_skipped_api_calls, number_of_schueler_without_klassen_skipped_api_calls, 
     number_of_deactive_lehrer_api_calls, number_of_create_person_api_calls, number_of_create_person_api_error_responses, number_of_create_kontext_api_calls,
-    number_of_create_kontext_api_error_responses)
+    number_of_create_kontext_api_error_responses, number_of_create_school_kontext_api_calls, number_of_create_school_kontext_api_error_responses,
+    number_of_create_class_kontext_api_calls, number_of_create_class_kontext_api_error_responses)
     
     (migration_log,number_of_potential_merge_from_admins,number_of_successfully_merged_any_context_from_admin,
     number_of_no_corressponding_leher_found,number_of_corressponding_lehrer_found_but_missing_school_kontext,
@@ -166,4 +217,4 @@ def migrate_person_data(create_person_post_endpoint, create_kontext_post_endpoin
                                number_of_no_corressponding_leher_found,number_of_corressponding_lehrer_found_but_missing_school_kontext,
                                number_of_create_merge_kontext_api_calls,number_of_create_merge_kontext_api_error_response)
     
-    create_and_save_log_excel(skipped_persons, failed_responses_create_person, failed_responses_create_kontext, other_log, migration_log)
+    create_and_save_log_excel(skipped_persons, failed_responses_create_person, failed_responses_create_kontext, schueler_on_school_without_klasse, other_log, migration_log)
