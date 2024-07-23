@@ -21,3 +21,4 @@ jobs:
       container_registry: "ghcr.io"
       fail_on_vulnerabilites: false
       report_location: "Dockerfile"
+      add_latest_tag: true
