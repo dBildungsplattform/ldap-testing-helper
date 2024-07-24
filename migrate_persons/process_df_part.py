@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import sys
 
 from helper import get_access_token
-from migrate_persons.person_helper import convert_data_from_row, create_kontext_api_call, create_person_api_call, create_person_api_call_with_kopersnr, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, log_skip
+from migrate_persons.person_helper import convert_data_from_row, create_kontext_api_call, create_person_api_call, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, log_skip
 
 
 def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdministriertvon_uuid_mapping, 

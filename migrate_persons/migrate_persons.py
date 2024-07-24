@@ -2,9 +2,9 @@ import sys
 import numpy as np
 import pandas as pd
 import requests
-from helper import get_access_token, get_class_nameAndAdministriertvon_uuid_mapping, get_rolle_id, get_school_dnr_uuid_mapping
+from helper import get_class_nameAndAdministriertvon_uuid_mapping, get_rolle_id, get_school_dnr_uuid_mapping
 from datetime import datetime, timedelta
-from migrate_persons.person_helper import convert_data_from_row, create_and_save_log_excel, create_kontext_api_call, create_person_api_call, execute_merge, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, get_orgaid_by_dnr, log_skip, print_merge_run_statistics, print_standard_run_statistics
+from migrate_persons.person_helper import create_and_save_log_excel, execute_merge, print_merge_run_statistics, print_standard_run_statistics
 from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
 import concurrent.futures
 from migrate_persons.process_df_part import process_df_part

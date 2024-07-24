@@ -1,5 +1,5 @@
-from ldif import LDIFParser, LDIFWriter
-from helper import get_access_token, get_oeffentlich_and_ersatz_uuid, parse_dn, get_is_school_object, get_is_uid_object
+from ldif import LDIFParser
+from helper import parse_dn, get_is_uid_object
 
 class BuildPersonDFLDIFParser(LDIFParser):
     def __init__(self, input_file):
