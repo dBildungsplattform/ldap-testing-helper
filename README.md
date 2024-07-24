@@ -14,7 +14,7 @@ Currently there are 3 Different Migrations which can be set in the env.list (SCH
 The migrations build on each other an need to be run in Order 1. SCHOOLS, 2. CLASSES, 3.PERSONS
 Depending on the chosen Migration Further Parameters need to be set
 
-1. SCHHOLS
+1. SCHHOOS
    - This Migration migrates all Schools in the LDAP and enriches the data for public schools using an Excel Table
 2. CLASSES
    - This Migration migrates all Classes in the LDAP
