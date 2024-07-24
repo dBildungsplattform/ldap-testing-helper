@@ -16,9 +16,11 @@ def get_access_token():
     token_headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-
+    print(token_url)
+    print(payload)
     token_response = requests.post(token_url, data=payload, headers=token_headers)
     token_response_json = token_response.json()
+    print("RESPONSE:"+token_response_json)
     token = token_response_json.get('access_token')
     return token
 
