@@ -20,7 +20,7 @@ def get_access_token():
     print(payload)
     token_response = requests.post(token_url, data=payload, headers=token_headers)
     token_response_json = token_response.json()
-    print("RESPONSE:"+token_response_json)
+    print(token_response_json)
     token = token_response_json.get('access_token')
     return token
 
