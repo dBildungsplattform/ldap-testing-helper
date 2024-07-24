@@ -91,7 +91,7 @@ def migrate_school_data(post_organisation_endpoint, get_oeff_and_ersatz_UUID_end
                 'status_code': response.status_code
             })
         else:
-            print(f"Sucessfully Imported School {row['dnr']} with name {name_value}")
+            print(f"Successfully Imported School {row['dnr']} with name {name_value}")
     
     print("")
     print("###STATISTICS###")

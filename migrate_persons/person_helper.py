@@ -34,7 +34,9 @@ def create_person_api_call(create_person_post_endpoint, headers, email, sn, give
         "username": username,
         "hashedPassword": hashed_password,
     }
+    print(f"    {datetime.now()}POST START FOR {username}")
     response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
+    print(f"    {datetime.now()}POST END FOR {username} {response_create_person.json()}")
     return response_create_person
 
 def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, organisationId, rolleId):

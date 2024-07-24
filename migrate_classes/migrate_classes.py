@@ -32,7 +32,6 @@ def migrate_class_data(post_organisation_endpoint, schools_get_endpoint, input_p
         parser = BuildClassesDFLDIFParser(input_file)
         parser.parse()
     df_ldap = pd.DataFrame(parser.classes).drop_duplicates()
-    print(parser.classes)
     df_ldap[0] = df_ldap[0].str.strip()
 
     split_cols = df_ldap[0].str.split('-', n=1, expand=True)
@@ -90,7 +89,7 @@ def migrate_class_data(post_organisation_endpoint, schools_get_endpoint, input_p
                 'status_code': response.status_code
             })
         else:
-            print(f"Sucessfully Imported Class {row['class_name']} for school {row['school_dnr']}")
+            print(f"Successfully Imported Class {row['class_name']} for school {row['school_dnr']}")
             
     print("")
     print("###STATISTICS###")
