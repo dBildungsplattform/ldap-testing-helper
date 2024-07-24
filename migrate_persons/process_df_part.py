@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import sys
 
 from helper import get_access_token
-from migrate_persons.person_helper import convert_data_from_row, create_kontext_api_call, create_person_api_call, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, log_skip
+from migrate_persons.person_helper import convert_data_from_row, create_kontext_api_call, create_person_api_call, create_person_api_call_with_kopersnr, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, log_skip
 
 
 def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdministriertvon_uuid_mapping, 
@@ -57,7 +57,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                 access_token = get_access_token()
                 headers['Authorization'] = 'Bearer ' + access_token
                 token_acquisition_time = datetime.now()
-        (email, sn, given_name, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
+        (email, sn, given_name, kopersnr, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admin-')) or mo.endswith('-Schulbegleitung'))]       
         is_skip_because_potential_merge_admin = ('#admin' in (sn or '').lower()) and ('sekadmin' not in (username or '').lower()) and ('extadmin' not in (username or '').lower()) #PRÜFUNG FUNKTIONIERT NUR IN ORIGINALDATEI, ANDERNFALLS MÜSSTE MAN AUF 3 BUCHSTABEN IM VORNAMEN PRÜFEN
@@ -85,13 +85,17 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                     'username': username,
                     'sn': sn,
                     'given_name': given_name,
+                    'email':email,
                     'memberOf_raw': memberOf_raw,
                     'memberOf_list': memberOf_list,
                 })
             continue
         
-        #CREATE PERSON
-        response_create_person = create_person_api_call(create_person_post_endpoint, headers, email, sn, given_name, username, hashed_password)
+        kopers_nr_for_creation = None
+        if(any(mo and 'lehrer-' in mo for mo in filtered_memberOf)):
+            kopers_nr_for_creation = kopersnr
+  
+        response_create_person = create_person_api_call(create_person_post_endpoint, headers, email, sn, given_name, username, hashed_password, kopers_nr_for_creation)
         number_of_create_person_api_calls += 1
         if response_create_person.status_code == 401:
             print(f"{datetime.now()} : Create-Person-Request - 401 Unauthorized error")
@@ -142,6 +146,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                 potential_merge_into_lehrer.append({
                     'username': username,
                     'person_id': created_person_id,
+                    'email':email,
                     'kontexts':combined_schul_kontexts
                 })
             

@@ -24,7 +24,7 @@ def get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf):
     return lehrer_contexts
 
 
-def create_person_api_call(create_person_post_endpoint, headers, email, sn, given_name, username, hashed_password):
+def create_person_api_call(create_person_post_endpoint, headers, email, sn, given_name, username, hashed_password, kopersnr):
     post_data_create_person = {
         "email": email,
         "name": {
@@ -33,6 +33,7 @@ def create_person_api_call(create_person_post_endpoint, headers, email, sn, give
         },
         "username": username,
         "hashedPassword": hashed_password,
+        "personalnummer":kopersnr
     }
     print(f"    {datetime.now()}POST START FOR {username}")
     response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
@@ -69,6 +70,7 @@ def convert_data_from_row(row, other_log):
         email = row['krb5PrincipalName'].decode('utf-8') if isinstance(row['krb5PrincipalName'], bytes) else row['krb5PrincipalName']
         sn = row['sn'].decode('utf-8') if isinstance(row['sn'], bytes) else row['sn']
         given_name = row['givenName'].decode('utf-8') if isinstance(row['givenName'], bytes) else row['givenName']
+        kopersnr = row['ucsschoolRecordUID '].decode('utf-8') if isinstance(row['ucsschoolRecordUID '], bytes) else row['ucsschoolRecordUID ']
         username = row['uid'].decode('utf-8') if isinstance(row['uid'], bytes) else row['uid']
         hashed_password = row['userPassword'].decode('utf-8') if isinstance(row['userPassword'], bytes) else row['userPassword']
         memberOf = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
@@ -85,7 +87,7 @@ def convert_data_from_row(row, other_log):
                     'singleMemberOfCausingError':singleMemberOf
                 })
                 continue
-        return (email, sn, given_name, username, hashed_password, memberOf_list)
+        return (email, sn, given_name, kopersnr, username, hashed_password, memberOf_list)
     
 
 def get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping):
@@ -154,10 +156,12 @@ def execute_merge(potential_merge_admins, potential_merge_into_lehrer, create_ko
         if matching_lehrer_person is None:
             migration_log.append({
                     'admin_username': potential_merge_admin['username'],
+                    'admin_email': potential_merge_admin['email'],
                     'admin_familienname': potential_merge_admin['sn'],
                     'admin_vorname': potential_merge_admin['given_name'],
                     'admin_memberOf':potential_merge_admin['memberOf_raw'],
                     'lehrer_username': '',
+                    'lehrer_email': '',
                     'lehrer_person_id': '',
                     'status':'COULD_NOT_MERGE_COMPLETLY',
                     'status_description':'No Corresponding Lehrer Found For This Admin Person'
@@ -186,10 +190,12 @@ def execute_merge(potential_merge_admins, potential_merge_into_lehrer, create_ko
                 if(merge_into_lehrer_has_correct_context_on_dnr == False):
                     migration_log.append({
                         'admin_username': potential_merge_admin['username'],
+                        'admin_email': potential_merge_admin['email'],
                         'admin_familienname': potential_merge_admin['sn'],
                         'admin_vorname': potential_merge_admin['given_name'],
                         'admin_memberOf':potential_merge_admin['memberOf_raw'],
                         'lehrer_username': matching_lehrer_person['username'],
+                        'lehrer_email': matching_lehrer_person['email'],
                         'lehrer_person_id': matching_lehrer_person['person_id'],
                         'status':'COULD_NOT_MERGE_SINGLE',
                         'status_description':f'Found Lehrer Has No Lehrer-Kontext on School with Id {orga_id_for_mergefrom_admin}, But Admin Role Was Found For This School'
@@ -206,10 +212,12 @@ def execute_merge(potential_merge_admins, potential_merge_into_lehrer, create_ko
                     number_of_create_merge_kontext_api_error_response += 1
                     migration_log.append({
                         'admin_username': potential_merge_admin['username'],
+                        'admin_email': potential_merge_admin['email'],
                         'admin_familienname': potential_merge_admin['sn'],
                         'admin_vorname': potential_merge_admin['given_name'],
                         'admin_memberOf':potential_merge_admin['memberOf_raw'],
                         'lehrer_username': matching_lehrer_person['username'],
+                        'lehrer_email': matching_lehrer_person['email'],
                         'lehrer_person_id': matching_lehrer_person['person_id'],
                         'status':'COULD_NOT_MERGE_SINGLE',
                         'status_description':f'Api Returned Error Response: {response_create_merge_kontext.json()}'
@@ -217,10 +225,12 @@ def execute_merge(potential_merge_admins, potential_merge_into_lehrer, create_ko
                 else:
                     migration_log.append({
                         'admin_username': potential_merge_admin['username'],
+                        'admin_email': potential_merge_admin['email'],
                         'admin_familienname': potential_merge_admin['sn'],
                         'admin_vorname': potential_merge_admin['given_name'],
                         'admin_memberOf':potential_merge_admin['memberOf_raw'],
                         'lehrer_username': matching_lehrer_person['username'],
+                        'lehrer_email': matching_lehrer_person['email'],
                         'lehrer_person_id': matching_lehrer_person['person_id'],
                         'status':'MERGED_SINGLE',
                         'status_description': f"Merged Adminrole from user {potential_merge_admin['username']} on school with Id {orga_id_for_mergefrom_admin} Into Lehrer {matching_lehrer_person['username']} on same school"
