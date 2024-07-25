@@ -31,7 +31,7 @@ class BuildSchoolDFLDIFParser(LDIFParser):
             self.number_of_found_schools += 1
             self.schools.append(parsed_dn['ou'][0])
 
-def migrate_school_data(post_organisation_endpoint, get_oeff_and_ersatz_UUID_endpoint, input_path_excel, input_path_ldap):
+def migrate_school_data(log_ouput_dir, post_organisation_endpoint, get_oeff_and_ersatz_UUID_endpoint, input_path_excel, input_path_ldap):
     print(f"Start Migration School Data with Input {post_organisation_endpoint}, {get_oeff_and_ersatz_UUID_endpoint}, {input_path_excel}, {input_path_ldap}")
     
     error_log = []
@@ -103,9 +103,8 @@ def migrate_school_data(post_organisation_endpoint, get_oeff_and_ersatz_UUID_end
     print("")
     print("End Migration School Data")
     
-    output_dir = '/usr/src/app/output'
-    os.makedirs(output_dir, exist_ok=True)
-    excel_path = os.path.join(output_dir, 'migrate_schools_log.xlsx')
+    os.makedirs(log_ouput_dir, exist_ok=True)
+    excel_path = os.path.join(log_ouput_dir, 'migrate_schools_log.xlsx')
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
             error_log.to_excel(writer, sheet_name='errors', index=False)

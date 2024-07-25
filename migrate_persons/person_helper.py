@@ -285,7 +285,7 @@ def print_merge_run_statistics(number_of_potential_merge_from_admins,number_of_s
     print(f"Number Of Total Create Merge Kontext Api Error Responses: {number_of_create_merge_kontext_api_error_response}")
     print("")
     
-def create_and_save_log_excel(skipped_persons, failed_responses_create_person, failed_responses_create_kontext, schueler_on_school_without_klasse, other_log, migration_log):
+def create_and_save_log_excel(log_ouput_dir, skipped_persons, failed_responses_create_person, failed_responses_create_kontext, schueler_on_school_without_klasse, other_log, migration_log):
     # Convert the list of failed responses to a DataFrame and save to an Excel file
     skipped_persons_df = pd.DataFrame(skipped_persons)
     failed_responses_create_person_df = pd.DataFrame(failed_responses_create_person)
@@ -294,9 +294,8 @@ def create_and_save_log_excel(skipped_persons, failed_responses_create_person, f
     other_log_df = pd.DataFrame(other_log)
     migration_log_df = pd.DataFrame(migration_log)
     
-    output_dir = '/usr/src/app/output'
-    os.makedirs(output_dir, exist_ok=True)
-    excel_path = os.path.join(output_dir, 'migrate_persons_log.xlsx')
+    os.makedirs(log_ouput_dir, exist_ok=True)
+    excel_path = os.path.join(log_ouput_dir, 'migrate_persons_log.xlsx')
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
             skipped_persons_df.to_excel(writer, sheet_name='Skipped_Persons', index=False)
