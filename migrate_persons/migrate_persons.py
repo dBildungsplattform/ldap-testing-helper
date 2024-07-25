@@ -9,7 +9,7 @@ from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
 import concurrent.futures
 from migrate_persons.process_df_part import process_df_part
                 
-def migrate_person_data(log_ouput_dir, create_person_post_endpoint, create_kontext_post_endpoint, input_path_ldap, orgas_get_endpoint, roles_get_endpoint, personenkontexte_for_person_get_endpoint):
+def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kontext_post_endpoint, input_path_ldap, orgas_get_endpoint, roles_get_endpoint, personenkontexte_for_person_get_endpoint):
     print(f"{datetime.now()} :Start Migration School Data")
     
     with open(input_path_ldap, 'rb') as input_file:
@@ -83,4 +83,4 @@ def migrate_person_data(log_ouput_dir, create_person_post_endpoint, create_konte
                                number_of_no_corressponding_leher_found,number_of_corressponding_lehrer_found_but_missing_school_kontext,
                                number_of_create_merge_kontext_api_calls,number_of_create_merge_kontext_api_error_response)
     
-    create_and_save_log_excel(log_ouput_dir, combined_results['skipped_persons'], combined_results['failed_responses_create_person'], combined_results['failed_responses_create_kontext'], combined_results['schueler_on_school_without_klasse'], combined_results['other_log'], migration_log)
+    create_and_save_log_excel(log_output_dir, combined_results['skipped_persons'], combined_results['failed_responses_create_person'], combined_results['failed_responses_create_kontext'], combined_results['schueler_on_school_without_klasse'], combined_results['other_log'], migration_log)

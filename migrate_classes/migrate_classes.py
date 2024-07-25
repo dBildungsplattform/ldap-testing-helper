@@ -21,7 +21,7 @@ class BuildClassesDFLDIFParser(LDIFParser):
             self.number_of_found_classes += 1
             self.classes.append(parsed_dn['cn'][0])
 
-def migrate_class_data(log_ouput_dir, post_organisation_endpoint, schools_get_endpoint, input_path_ldap):
+def migrate_class_data(log_output_dir, post_organisation_endpoint, schools_get_endpoint, input_path_ldap):
     print(f"Start Migration Classes Data")
     
     error_log = []
@@ -102,8 +102,9 @@ def migrate_class_data(log_ouput_dir, post_organisation_endpoint, schools_get_en
     
     print(error_log)
             
-    os.makedirs(log_ouput_dir, exist_ok=True)
-    excel_path = os.path.join(log_ouput_dir, 'migrate_classes_log.xlsx')
+    os.makedirs(log_output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    excel_path = os.path.join(log_output_dir, f'migrate_classes_log_{timestamp}.xlsx')
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
             error_log.to_excel(writer, sheet_name='errors', index=False)

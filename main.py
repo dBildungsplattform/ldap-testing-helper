@@ -9,8 +9,8 @@ def main():
     migrationType = os.environ.get('MIGRATION_TYPE')
     if not migrationType:
         raise ValueError("ENV: Migration Type path cannot be null or empty")
-    logOuputDir = os.environ.get('LOG_OUPUT_DIR')
-    if not logOuputDir:
+    logOutputDir = os.environ.get('LOG_OUTPUT_DIR')
+    if not logOutputDir:
         raise ValueError("ENV: Log ouput path cannot be null or empty")
     
     if migrationType == 'SCHOOLS':
@@ -28,7 +28,7 @@ def main():
         if not schoolDataInputLDAP:
             raise ValueError("ENV: Input path for LDAP cannot be null or empty")
 
-        migrate_school_data(logOuputDir, createOrgaPostEndpoint, getOeffAndErsatzUUIDEndpoint, schoolDataInputExcel, schoolDataInputLDAP)
+        migrate_school_data(logOutputDir, createOrgaPostEndpoint, getOeffAndErsatzUUIDEndpoint, schoolDataInputExcel, schoolDataInputLDAP)
         
     if migrationType == 'PERSONS':
         createPersonPostEndpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON']
@@ -51,7 +51,7 @@ def main():
         if not personenkontexteForPersonGetEndpoint:
             raise ValueError("ENV: Get Endpoint for Personenkontexte For Person cannot be null or empty")
 
-        migrate_person_data(logOuputDir, createPersonPostEndpoint, createKontextPostEndpoint, personsDataInputLDAP, schoolsGetEndpoint, rolesGetEndpoint, personenkontexteForPersonGetEndpoint)
+        migrate_person_data(logOutputDir, createPersonPostEndpoint, createKontextPostEndpoint, personsDataInputLDAP, schoolsGetEndpoint, rolesGetEndpoint, personenkontexteForPersonGetEndpoint)
         
     if migrationType == 'CLASSES':
         createOrgaPostEndpoint = os.environ['MIGRATION_CLASSES_POST_ENDPOINT']
@@ -65,7 +65,7 @@ def main():
         if not classDataInputLDAP:
             raise ValueError("ENV: Input path for LDAP cannot be null or empty")
         
-        migrate_class_data(logOuputDir, createOrgaPostEndpoint, schoolsGetEndpoint, classDataInputLDAP)
+        migrate_class_data(logOutputDir, createOrgaPostEndpoint, schoolsGetEndpoint, classDataInputLDAP)
         
         
     print("Main execution finished.")
