@@ -70,7 +70,7 @@ def convert_data_from_row(row, other_log):
         email = row['krb5PrincipalName'].decode('utf-8') if isinstance(row['krb5PrincipalName'], bytes) else row['krb5PrincipalName']
         sn = row['sn'].decode('utf-8') if isinstance(row['sn'], bytes) else row['sn']
         given_name = row['givenName'].decode('utf-8') if isinstance(row['givenName'], bytes) else row['givenName']
-        kopersnr = row['ucsschoolRecordUID '].decode('utf-8') if isinstance(row['ucsschoolRecordUID '], bytes) else row['ucsschoolRecordUID ']
+        kopersnr = row['ucsschoolRecordUID'].decode('utf-8') if isinstance(row['ucsschoolRecordUID'], bytes) else row['ucsschoolRecordUID']
         username = row['uid'].decode('utf-8') if isinstance(row['uid'], bytes) else row['uid']
         hashed_password = row['userPassword'].decode('utf-8') if isinstance(row['userPassword'], bytes) else row['userPassword']
         memberOf = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
