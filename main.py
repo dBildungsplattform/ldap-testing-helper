@@ -1,4 +1,7 @@
+import itertools
 import os
+import tempfile
+
 from migrate_classes.migrate_classes import migrate_class_data
 from migrate_persons.migrate_persons import migrate_person_data
 from migrate_schools.migrate_schools import migrate_school_data
@@ -51,7 +54,10 @@ def main():
         if not personenkontexteForPersonGetEndpoint:
             raise ValueError("ENV: Get Endpoint for Personenkontexte For Person cannot be null or empty")
 
-        migrate_person_data(logOutputDir, createPersonPostEndpoint, createKontextPostEndpoint, personsDataInputLDAP, schoolsGetEndpoint, rolesGetEndpoint, personenkontexteForPersonGetEndpoint)
+        tmpFiles = chunk_input_file(personsDataInputLDAP)
+
+        for chunkFile in tmpFiles:
+            migrate_person_data(logOutputDir, createPersonPostEndpoint, createKontextPostEndpoint, chunkFile, schoolsGetEndpoint, rolesGetEndpoint, personenkontexteForPersonGetEndpoint)
         
     if migrationType == 'CLASSES':
         createOrgaPostEndpoint = os.environ['MIGRATION_CLASSES_POST_ENDPOINT']
@@ -69,6 +75,32 @@ def main():
         
         
     print("Main execution finished.")
+
+
+def chunk_input_file(personsDataInputLDAP):
+
+    temp_files = (tempfile.NamedTemporaryFile(mode="w+t", prefix="personen_import") for _ in itertools.count())
+
+    # Split the input LDIF to keep the memory footprint manageable
+    # Luckily LDIF splits its records by simply putting an empty line in between them
+    MAX_DATASETS_PER_FILE = 10000
+    datasetCounter = 0
+    tmpFiles = []
+    current_tmp_file = next(temp_files)
+    tmpFiles.append(current_tmp_file)
+    with open(personsDataInputLDAP) as ldifFile:
+        for line in ldifFile:
+            if line == "\n":
+                datasetCounter += 1
+            if datasetCounter < MAX_DATASETS_PER_FILE:
+                current_tmp_file.write(line)
+            # New file and drop the separator line
+            else:
+                datasetCounter = 0
+                current_tmp_file = next(temp_files)
+                tmpFiles.append(current_tmp_file)
+    return tmpFiles
+
 
 if __name__ == "__main__":
     main()
