@@ -12,8 +12,8 @@ def main():
     migrationType = os.environ.get('MIGRATION_TYPE')
     if not migrationType:
         raise ValueError("ENV: Migration Type path cannot be null or empty")
-    logOutputDir = os.environ.get('LOG_OUTPUT_DIR')
-    if not logOutputDir:
+    log_output_dir = os.environ.get('LOG_OUTPUT_DIR')
+    if not log_output_dir:
         raise ValueError("ENV: Log ouput path cannot be null or empty")
     
     if migrationType == 'SCHOOLS':
@@ -31,47 +31,47 @@ def main():
         if not schoolDataInputLDAP:
             raise ValueError("ENV: Input path for LDAP cannot be null or empty")
 
-        migrate_school_data(logOutputDir, createOrgaPostEndpoint, getOeffAndErsatzUUIDEndpoint, schoolDataInputExcel, schoolDataInputLDAP)
+        migrate_school_data(log_output_dir, createOrgaPostEndpoint, getOeffAndErsatzUUIDEndpoint, schoolDataInputExcel, schoolDataInputLDAP)
         
     if migrationType == 'PERSONS':
-        createPersonPostEndpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON']
-        createKontextPostEndpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_KONTEXT']
-        personsDataInputLDAP = os.environ['MIGRATION_PERSONS_INPUT_LDAP_COMPLETE_PATH']
-        schoolsGetEndpoint = os.environ['MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT']
-        rolesGetEndpoint = os.environ['MIGRATION_PERSONS_GET_ROLES_ENDPOINT']
-        personenkontexteForPersonGetEndpoint = os.environ['MIGRATION_PERSONS_GET_PERSONENKONTEXTE_FOR_PERSON_ENDPOINT']
+        create_person_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON']
+        create_kontext_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_KONTEXT']
+        persons_data_input_ldap = os.environ['MIGRATION_PERSONS_INPUT_LDAP_COMPLETE_PATH']
+        schools_get_endpoint = os.environ['MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT']
+        roles_get_endpoint = os.environ['MIGRATION_PERSONS_GET_ROLES_ENDPOINT']
+        personenkontexte_for_person_get_endpoint = os.environ['MIGRATION_PERSONS_GET_PERSONENKONTEXTE_FOR_PERSON_ENDPOINT']
         
-        if not createPersonPostEndpoint:
+        if not create_person_post_endpoint:
             raise ValueError("ENV: POST Endpoint For Create Person cannot be null or empty")
-        if not createKontextPostEndpoint:
+        if not create_kontext_post_endpoint:
             raise ValueError("ENV: POST Endpoint For Create Kontext cannot be null or empty")
-        if not personsDataInputLDAP:
+        if not persons_data_input_ldap:
             raise ValueError("ENV: Input path for LDAP cannot be null or empty")
-        if not schoolsGetEndpoint:
+        if not schools_get_endpoint:
             raise ValueError("ENV: Get Endpoint for Schools cannot be null or empty")
-        if not rolesGetEndpoint:
+        if not roles_get_endpoint:
             raise ValueError("ENV: Get Endpoint for Roles cannot be null or empty")
-        if not personenkontexteForPersonGetEndpoint:
+        if not personenkontexte_for_person_get_endpoint:
             raise ValueError("ENV: Get Endpoint for Personenkontexte For Person cannot be null or empty")
 
-        tmpFiles = chunk_input_file(personsDataInputLDAP)
+        tmpFiles = chunk_input_file(persons_data_input_ldap)
 
         for chunkFile in tmpFiles:
-            migrate_person_data(logOutputDir, createPersonPostEndpoint, createKontextPostEndpoint, chunkFile, schoolsGetEndpoint, rolesGetEndpoint, personenkontexteForPersonGetEndpoint)
+            migrate_person_data(log_output_dir, create_person_post_endpoint, create_kontext_post_endpoint, chunkFile, schools_get_endpoint, roles_get_endpoint, personenkontexte_for_person_get_endpoint)
         
     if migrationType == 'CLASSES':
         createOrgaPostEndpoint = os.environ['MIGRATION_CLASSES_POST_ENDPOINT']
-        schoolsGetEndpoint = os.environ['MIGRATION_CLASSES_GET_SCHOOLS_ENDPOINT']
+        schools_get_endpoint = os.environ['MIGRATION_CLASSES_GET_SCHOOLS_ENDPOINT']
         classDataInputLDAP = os.environ['MIGRATION_CLASSES_INPUT_LDAP_COMPLETE_PATH']
         
         if not createOrgaPostEndpoint:
             raise ValueError("ENV: POST Endpoint For Create Organisation cannot be null or empty")
-        if not schoolsGetEndpoint:
+        if not schools_get_endpoint:
             raise ValueError("ENV: Get Endpoint for Schools cannot be null or empty")
         if not classDataInputLDAP:
             raise ValueError("ENV: Input path for LDAP cannot be null or empty")
         
-        migrate_class_data(logOutputDir, createOrgaPostEndpoint, schoolsGetEndpoint, classDataInputLDAP)
+        migrate_class_data(log_output_dir, createOrgaPostEndpoint, schools_get_endpoint, classDataInputLDAP)
         
         
     print("Main execution finished.")
