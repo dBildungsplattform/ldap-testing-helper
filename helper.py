@@ -84,7 +84,7 @@ def get_rolle_id(get_role_endpoint, name):
     if len(response_json) < 1:
         raise Exception("Response does not contain any elements")
     if len(response_json)>0:
-        print(f"More than one result, filtering by name exactly: {name}")
+        print(f"At least one result, filtering by name exactly: {name}")
         for element in response_json:
             if element['name'] == name:
                 return element['id']
