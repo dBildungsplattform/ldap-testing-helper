@@ -2,10 +2,10 @@ import itertools
 import os
 import tempfile
 
-from helper import get_rolle_id
+from helper import get_class_nameAndAdministriertvon_uuid_mapping, get_rolle_id, get_school_dnr_uuid_mapping
 from migrate_classes.migrate_classes import migrate_class_data
 from migrate_persons.migrate_persons import migrate_person_data
-from migrate_persons.person_helper import print_standard_run_statistics, print_merge_run_statistics, \
+from migrate_persons.person_helper import execute_merge, print_standard_run_statistics, print_merge_run_statistics, \
     create_and_save_log_excel
 from migrate_schools.migrate_schools import migrate_school_data
 
@@ -36,12 +36,26 @@ def main():
 
         migrate_school_data(log_output_dir, createOrgaPostEndpoint, getOeffAndErsatzUUIDEndpoint, schoolDataInputExcel,
                             schoolDataInputLDAP)
+        
+    if migrationType == 'CLASSES':
+        createOrgaPostEndpoint = os.environ['MIGRATION_CLASSES_POST_ENDPOINT']
+        schools_get_endpoint = os.environ['MIGRATION_CLASSES_GET_SCHOOLS_ENDPOINT']
+        classDataInputLDAP = os.environ['MIGRATION_CLASSES_INPUT_LDAP_COMPLETE_PATH']
+
+        if not createOrgaPostEndpoint:
+            raise ValueError("ENV: POST Endpoint For Create Organisation cannot be null or empty")
+        if not schools_get_endpoint:
+            raise ValueError("ENV: Get Endpoint for Schools cannot be null or empty")
+        if not classDataInputLDAP:
+            raise ValueError("ENV: Input path for LDAP cannot be null or empty")
+
+        migrate_class_data(log_output_dir, createOrgaPostEndpoint, schools_get_endpoint, classDataInputLDAP)
 
     if migrationType == 'PERSONS':
         create_person_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON']
         create_kontext_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_KONTEXT']
         persons_data_input_ldap = os.environ['MIGRATION_PERSONS_INPUT_LDAP_COMPLETE_PATH']
-        schools_get_endpoint = os.environ['MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT']
+        orgas_get_endpoint = os.environ['MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT']
         roles_get_endpoint = os.environ['MIGRATION_PERSONS_GET_ROLES_ENDPOINT']
         personenkontexte_for_person_get_endpoint = os.environ[
             'MIGRATION_PERSONS_GET_PERSONENKONTEXTE_FOR_PERSON_ENDPOINT']
@@ -52,8 +66,8 @@ def main():
             raise ValueError("ENV: POST Endpoint For Create Kontext cannot be null or empty")
         if not persons_data_input_ldap:
             raise ValueError("ENV: Input path for LDAP cannot be null or empty")
-        if not schools_get_endpoint:
-            raise ValueError("ENV: Get Endpoint for Schools cannot be null or empty")
+        if not orgas_get_endpoint:
+            raise ValueError("ENV: Get Endpoint for Schools/Orgas cannot be null or empty")
         if not roles_get_endpoint:
             raise ValueError("ENV: Get Endpoint for Roles cannot be null or empty")
         if not personenkontexte_for_person_get_endpoint:
@@ -63,6 +77,14 @@ def main():
         roleid_schuladmin = get_rolle_id(roles_get_endpoint, 'Schuladmin')
         roleid_lehrkraft = get_rolle_id(roles_get_endpoint, 'Lehrkraft')
         roleid_schulbegleitung = get_rolle_id(roles_get_endpoint, 'Schulbegleitung')
+        school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(orgas_get_endpoint)
+        class_nameAndAdministriertvon_uuid_mapping = get_class_nameAndAdministriertvon_uuid_mapping(orgas_get_endpoint)
+        
+        print(f'Using Roles --> SuS: {roleid_sus}, Schuladmin: {roleid_schuladmin}, Lehrkraft: {roleid_lehrkraft}, Schulbegleitung: {roleid_schulbegleitung}')
+        print('Using School UUID - DNR Mapping:')
+        print(school_uuid_dnr_mapping)
+        print('Using Klass UUID - Name + AdministriertVon Mapping:')
+        print(class_nameAndAdministriertvon_uuid_mapping)
 
         combined_results = {
             'number_of_found_persons': 0,
@@ -91,12 +113,11 @@ def main():
         }
 
         tmpFiles = chunk_input_file(persons_data_input_ldap)
-
+        
         for chunkFile in tmpFiles:
             migrate_person_data(combined_results, create_person_post_endpoint,
-                                create_kontext_post_endpoint, chunkFile, schools_get_endpoint, roles_get_endpoint,
-                                personenkontexte_for_person_get_endpoint, roleid_sus, roleid_schuladmin,
-                                roleid_lehrkraft, roleid_schulbegleitung)
+                                create_kontext_post_endpoint, chunkFile, roleid_sus, roleid_schuladmin,
+                                roleid_lehrkraft, roleid_schulbegleitung, school_uuid_dnr_mapping, class_nameAndAdministriertvon_uuid_mapping)
 
         print_standard_run_statistics(combined_results['number_of_found_persons'],
                                       combined_results['number_of_total_skipped_api_calls'],
@@ -135,19 +156,6 @@ def main():
                                   combined_results['failed_responses_create_kontext'],
                                   combined_results['schueler_on_school_without_klasse'], combined_results['other_log'],
                                   migration_log)
-    if migrationType == 'CLASSES':
-        createOrgaPostEndpoint = os.environ['MIGRATION_CLASSES_POST_ENDPOINT']
-        schools_get_endpoint = os.environ['MIGRATION_CLASSES_GET_SCHOOLS_ENDPOINT']
-        classDataInputLDAP = os.environ['MIGRATION_CLASSES_INPUT_LDAP_COMPLETE_PATH']
-
-        if not createOrgaPostEndpoint:
-            raise ValueError("ENV: POST Endpoint For Create Organisation cannot be null or empty")
-        if not schools_get_endpoint:
-            raise ValueError("ENV: Get Endpoint for Schools cannot be null or empty")
-        if not classDataInputLDAP:
-            raise ValueError("ENV: Input path for LDAP cannot be null or empty")
-
-        migrate_class_data(log_output_dir, createOrgaPostEndpoint, schools_get_endpoint, classDataInputLDAP)
 
     print("Main execution finished.")
 
@@ -157,7 +165,7 @@ def chunk_input_file(personsDataInputLDAP):
 
     # Split the input LDIF to keep the memory footprint manageable
     # Luckily LDIF splits its records by simply putting an empty line in between them
-    MAX_DATASETS_PER_FILE = 10000
+    MAX_DATASETS_PER_FILE = 50000
     datasetCounter = 0
     tmpFiles = []
     current_tmp_file = next(temp_files)
