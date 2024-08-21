@@ -52,6 +52,7 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, get_oeff_and
         parser = BuildSchoolDFLDIFParser(input_file)
         parser.parse()
     df_ldap = pd.DataFrame(parser.schools, columns=['dnr'])
+    df_ldap = df_ldap.drop_duplicates(subset='dnr')
     merged_df = pd.merge(df_ldap, df_excel, on='dnr', how='left')
     merged_df['Classification'] = merged_df['dnr'].apply(classify_dnr)
     
@@ -102,14 +103,16 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, get_oeff_and
     
     print("")
     print("End Migration School Data")
+    print(error_log)
     
+    error_df = pd.DataFrame(error_log)
     os.makedirs(log_output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     excel_path = os.path.join(log_output_dir, f'migrate_schools_log_{timestamp}.xlsx')
 
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            error_log.to_excel(writer, sheet_name='errors', index=False)
+            error_df.to_excel(writer, sheet_name='errors', index=False)
         print(f"Log responses have been saved to '{excel_path}'.")
         print(f"Check the current working directory: {os.getcwd()}")
     except Exception as e:

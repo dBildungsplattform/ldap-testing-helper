@@ -20,7 +20,7 @@ RUN python3.8 -m pip install --upgrade pip
 
 COPY . .
 
-RUN pip install --no-cache-dir pandas python-ldap requests openpyxl python-dotenv itertools
+RUN pip install --no-cache-dir pandas python-ldap requests openpyxl python-dotenv
 
 RUN chmod +x main.py
 
