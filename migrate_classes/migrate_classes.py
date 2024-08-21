@@ -101,13 +101,14 @@ def migrate_class_data(log_output_dir, post_organisation_endpoint, schools_get_e
     print("End Migration Class Data")
     
     print(error_log)
-            
+    
+    error_df = pd.DataFrame(error_log)
     os.makedirs(log_output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     excel_path = os.path.join(log_output_dir, f'migrate_classes_log_{timestamp}.xlsx')
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            error_log.to_excel(writer, sheet_name='errors', index=False)
+            error_df.to_excel(writer, sheet_name='errors', index=False)
         print(f"Log responses have been saved to '{excel_path}'.")
         print(f"Check the current working directory: {os.getcwd()}")
     except Exception as e:

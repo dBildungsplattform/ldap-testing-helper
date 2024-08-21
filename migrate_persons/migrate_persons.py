@@ -18,7 +18,6 @@ def migrate_person_data(combined_results, create_person_post_endpoint, create_ko
         parser = BuildPersonDFLDIFParser(input_file)
         parser.parse()
     df_ldap = pd.DataFrame(parser.entries_list)
-    print(f"{datetime.now()} :Constructed Person List")
 
     df_parts = np.array_split(df_ldap, 100)
     with concurrent.futures.ThreadPoolExecutor() as executor:
