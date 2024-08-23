@@ -8,11 +8,12 @@ from datetime import datetime, timedelta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from helper import log
 from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
 
 
 def check_schueler_ohne_klassen(input_path_ldap):
-    print(f"Start Migration School Data")
+    log(f"Start Migration School Data")
     
     with open(input_path_ldap, 'rb') as input_file:
         parser = BuildPersonDFLDIFParser(input_file)
@@ -41,16 +42,16 @@ def check_schueler_ohne_klassen(input_path_ldap):
                 if(not is_deactive):
                     aktiveSchuelerOhneKlasse += 1
             if is_schueler and has_klassen and not is_deactive:
-                print(memberOf)
+                log(memberOf)
         
-    print(f"Number of Total Persons: {total_persons}")
-    print(f"Number Of Total Schueler: {total_schueler}")
-    print(f"Number of All persons where 'memberOf' starts with 'schueler-' and 'klassen' is missing: {schuelerOhneKlasse}")
-    print(f"Number of Active persons where 'memberOf' starts with 'schueler-' and 'klassen' is missing: {aktiveSchuelerOhneKlasse}")
+    log(f"Number of Total Persons: {total_persons}")
+    log(f"Number Of Total Schueler: {total_schueler}")
+    log(f"Number of All persons where 'memberOf' starts with 'schueler-' and 'klassen' is missing: {schuelerOhneKlasse}")
+    log(f"Number of Active persons where 'memberOf' starts with 'schueler-' and 'klassen' is missing: {aktiveSchuelerOhneKlasse}")
         
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print("Usage: python script.py <path_to_ldap_file>")
+        log("Usage: python script.py <path_to_ldap_file>")
         sys.exit(1)
     
     input_path_ldap = sys.argv[1]

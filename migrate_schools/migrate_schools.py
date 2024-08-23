@@ -5,9 +5,8 @@ import sys
 import pandas as pd
 import requests
 from openpyxl import load_workbook
-from helper import get_access_token, get_oeffentlich_and_ersatz_uuid, parse_dn, get_is_school_object
-from ldif import LDIFParser, LDIFWriter
-import ldap.dn
+from helper import get_access_token, get_oeffentlich_and_ersatz_uuid, log, parse_dn, get_is_school_object
+from ldif import LDIFParser
 
 def classify_dnr(dnr):
     if dnr.startswith('070'):
@@ -31,16 +30,17 @@ class BuildSchoolDFLDIFParser(LDIFParser):
             self.number_of_found_schools += 1
             self.schools.append(parsed_dn['ou'][0])
 
-def migrate_school_data(log_output_dir, post_organisation_endpoint, get_oeff_and_ersatz_UUID_endpoint, input_path_excel, input_path_ldap):
-    print(f"Start Migration School Data with Input {post_organisation_endpoint}, {get_oeff_and_ersatz_UUID_endpoint}, {input_path_excel}, {input_path_ldap}")
+def migrate_school_data(log_output_dir, post_organisation_endpoint, oeff_and_ersatz_uuid_get_endpoint, input_path_excel, input_path_ldap):
+    log(f"Start method migrate_school_data with Input {log_output_dir}, {post_organisation_endpoint}, {oeff_and_ersatz_uuid_get_endpoint}, {input_path_excel}, {input_path_ldap}")
     
     error_log = []
     number_of_api_calls = 0
     number_of_api_error_responses = 0
     
-    (oeffentlich_uuid, ersatz_uuid) = get_oeffentlich_and_ersatz_uuid(get_oeff_and_ersatz_UUID_endpoint)
-    print(f"Using Oeffentliche Schulen Knoten: {oeffentlich_uuid}")
-    print(f"Using Ersatzzschule Knoten: {ersatz_uuid}")
+    (oeffentlich_uuid, ersatz_uuid) = get_oeffentlich_and_ersatz_uuid(oeff_and_ersatz_uuid_get_endpoint)
+    log(f"")
+    log(f"Using Oeffentliche Schulen ParentKnoten: {oeffentlich_uuid}")
+    log(f"Using Ersatzzschule Parent Knoten: {ersatz_uuid}")
 
     workbook = load_workbook(filename=input_path_excel)
     sheet = workbook.active
@@ -80,7 +80,7 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, get_oeff_and
         response = requests.post(post_organisation_endpoint, json=post_data, headers=headers)
         number_of_api_calls += 1
         if response.status_code == 401:
-            print(f"{datetime.now()} : Create-School-Request - 401 Unauthorized error")
+            log(f"Create-School-Request - 401 Unauthorized error")
             sys.exit()
         elif response.status_code != 201:
             number_of_api_error_responses += 1
@@ -92,19 +92,15 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, get_oeff_and
                 'status_code': response.status_code
             })
         else:
-            print(f"Successfully Imported School {row['dnr']} with name {name_value}")
+            log(f"Successfully Imported School {row['dnr']} with name {name_value}")
     
-    print("")
-    print("###STATISTICS###")
-    print("")
-    print(f"Number of found Schools: {parser.number_of_found_schools}")
-    print(f"Number of API Calls: {number_of_api_calls}")
-    print(f'Number of API Error Responses: {number_of_api_error_responses}')
-    
-    print("")
-    print("End Migration School Data")
-    print(error_log)
-    
+    log("")
+    log("###STATISTICS###")
+    log("")
+    log(f"Number of found Schools: {parser.number_of_found_schools}")
+    log(f"Number of API Calls: {number_of_api_calls}")
+    log(f'Number of API Error Responses: {number_of_api_error_responses}')
+        
     error_df = pd.DataFrame(error_log)
     os.makedirs(log_output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -113,7 +109,10 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, get_oeff_and
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
             error_df.to_excel(writer, sheet_name='errors', index=False)
-        print(f"Log responses have been saved to '{excel_path}'.")
-        print(f"Check the current working directory: {os.getcwd()}")
+        log(f"Log responses have been saved to '{excel_path}'.")
+        log(f"Check the current working directory: {os.getcwd()}")
     except Exception as e:
-        print(f"An error occurred while saving the Excel file: {e}")
+        log(f"An error occurred while saving the Excel file: {e}")
+        
+    log("")
+    log("End method migrate_school_data")

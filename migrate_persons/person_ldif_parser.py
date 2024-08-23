@@ -1,5 +1,5 @@
 from ldif import LDIFParser
-from helper import parse_dn, get_is_uid_object
+from helper import log, parse_dn, get_is_uid_object
 
 class BuildPersonDFLDIFParser(LDIFParser):
     def __init__(self, input_file):
@@ -30,4 +30,4 @@ class BuildPersonDFLDIFParser(LDIFParser):
                 'memberOf': memberOf
             }
             self.entries_list.append(new_entry)
-            print(f"Identified Person Nr: {self.number_of_found_persons}")
+            log(f"Identified Person Nr: {self.number_of_found_persons}")
