@@ -100,6 +100,8 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, oeff_and_ers
     log(f"Number of found Schools: {parser.number_of_found_schools}")
     log(f"Number of API Calls: {number_of_api_calls}")
     log(f'Number of API Error Responses: {number_of_api_error_responses}')
+    
+    log(error_log)
         
     error_df = pd.DataFrame(error_log)
     os.makedirs(log_output_dir, exist_ok=True)

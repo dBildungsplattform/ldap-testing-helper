@@ -97,6 +97,8 @@ def migrate_class_data(log_output_dir, post_organisation_endpoint, schools_get_e
     log(f"Number of API Calls: {number_of_api_calls}")
     log(f'Number of API Error Responses: {number_of_api_error_responses}')
     
+    log(error_log)
+    
     error_df = pd.DataFrame(error_log)
     os.makedirs(log_output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
