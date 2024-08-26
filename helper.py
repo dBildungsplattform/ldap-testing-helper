@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 import os
 import pandas as pd
 import requests
@@ -20,10 +21,23 @@ def get_access_token():
     token_headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-    token_response = requests.post(token_url, data=payload, headers=token_headers)
-    token_response_json = token_response.json()
-    token = token_response_json.get('access_token')
-    return token
+    attempt = 1
+    while attempt < 5:
+        try:
+            token_response = requests.post(token_url, data=payload, headers=token_headers)
+            token_response.raise_for_status()  # Raises an error for bad responses (4xx or 5xx)
+            token_response_json = token_response.json()
+            token = token_response_json.get('access_token')
+            if token:
+                return token
+            else:
+                raise Exception("Access token not found in the response.")
+        except requests.RequestException as e:
+            attempt += 1
+            print(f"Get Access Token Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt)
+    
+    raise Exception("Max retries exceeded. Failed to obtain access token.")
 
 def get_oeffentlich_and_ersatz_uuid(get_oeff_and_ersatz_UUID_endpoint):
         access_token = get_access_token()

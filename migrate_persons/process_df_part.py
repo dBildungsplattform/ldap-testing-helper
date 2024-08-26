@@ -158,7 +158,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                             'description':'The student is at this school, but has no classes here'
                         })
                 for klasse in klassen_on_school:
-                    orgaId = get_orgaid_by_className_and_administriertvon(class_nameAndAdministriertvon_uuid_mapping, klasse, schul_kontext['orgaId']) #Klasse kann Zweifelfrei über Kombi aus Name + AdministriertVon Identifiziert werden
+                    orgaId = get_orgaid_by_className_and_administriertvon(class_nameAndAdministriertvon_uuid_mapping, klasse, schul_kontext['orgaId'], username) #Klasse kann Zweifelfrei über Kombi aus Name + AdministriertVon Identifiziert werden
                     response_create_class_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, orgaId, roleid_sus)
                     number_of_create_kontext_api_calls += 1
                     number_of_create_class_kontext_api_calls += 1

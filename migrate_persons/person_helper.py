@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 import os
 import sys
 import pandas as pd
@@ -35,8 +36,18 @@ def create_person_api_call(create_person_post_endpoint, headers, email, sn, give
         "hashedPassword": hashed_password,
         "personalnummer":kopersnr
     }
-    response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
-    return response_create_person
+    attempt = 1
+    while attempt < 5:
+        try:
+            response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
+            response_create_person.raise_for_status()  # Raises an error for bad responses (4xx or 5xx)
+            return response_create_person
+        except requests.RequestException as e:
+            attempt += 1
+            log(f"Create Person Request Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt) #Exponential Backof
+    
+    raise Exception("Max retries exceeded. The request failed.")
 
 def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, organisationId, rolleId):
     post_data_create_kontext = {
@@ -44,8 +55,19 @@ def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, org
         "organisationId": organisationId,
         "rolleId": rolleId
     }
-    response_create_kontext = requests.post(create_kontext_post_endpoint, json=post_data_create_kontext, headers=headers)
-    return response_create_kontext
+    
+    attempt = 1
+    while attempt < 5:
+        try:
+            response_create_kontext = requests.post(create_kontext_post_endpoint, json=post_data_create_kontext, headers=headers)
+            response_create_kontext.raise_for_status()
+            return response_create_kontext
+        except requests.RequestException as e:
+            attempt += 1
+            log(f"Create Kontext Request Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt) #Exponential Backof
+    
+    raise Exception("Max retries exceeded. The request failed.")
 
 def get_orgaid_by_dnr(df, dnr):
     result = df.loc[df['dnr'] == dnr, 'id']
@@ -55,12 +77,12 @@ def get_orgaid_by_dnr(df, dnr):
         log(f"No matching id found for dnr: {dnr}")
         return None
     
-def get_orgaid_by_className_and_administriertvon(df, name, administriert_von):
+def get_orgaid_by_className_and_administriertvon(df, name, administriert_von, username_created_kontext_for):
     result = df.loc[(df['name'] == name) & (df['administriertVon'] == administriert_von), 'id']
     if not result.empty:
         return result.iloc[0]
     else:
-        log(f"No matching id found for classname: {name}")
+        log(f"No matching class_id found for classname: {name} and administriert_von: {administriert_von}, when trying to create class kontext for username: {username_created_kontext_for}")
         return None
     
     
