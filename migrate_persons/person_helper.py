@@ -40,7 +40,6 @@ def create_person_api_call(create_person_post_endpoint, headers, email, sn, give
     while attempt < 5:
         try:
             response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
-            response_create_person.raise_for_status()  # Raises an error for bad responses (4xx or 5xx)
             return response_create_person
         except requests.RequestException as e:
             attempt += 1
@@ -60,7 +59,6 @@ def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, org
     while attempt < 5:
         try:
             response_create_kontext = requests.post(create_kontext_post_endpoint, json=post_data_create_kontext, headers=headers)
-            response_create_kontext.raise_for_status()
             return response_create_kontext
         except requests.RequestException as e:
             attempt += 1

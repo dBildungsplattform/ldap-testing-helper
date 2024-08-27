@@ -2,6 +2,7 @@ from base64 import b64decode
 from datetime import datetime
 import os
 import sys
+import time
 import pandas as pd
 import requests
 from openpyxl import load_workbook
@@ -77,7 +78,17 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, oeff_and_ers
                     "administriertVon": parentUUID,
                     "typ": "SCHULE"
         }
-        response = requests.post(post_organisation_endpoint, json=post_data, headers=headers)
+        
+        attempt = 1
+        while attempt < 5:
+            try:
+                response = requests.post(post_organisation_endpoint, json=post_data, headers=headers)
+                break
+            except requests.RequestException as e:
+                attempt += 1
+                log(f"Create School Request Attempt {attempt} failed: {e}. Retrying...")
+                time.sleep(5*attempt) #Exponential Backof    
+        
         number_of_api_calls += 1
         if response.status_code == 401:
             log(f"Create-School-Request - 401 Unauthorized error")

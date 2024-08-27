@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import os
 import sys
+import time
 import pandas as pd
 import requests
 from helper import get_access_token, get_is_class_object, get_school_dnr_uuid_mapping, log, parse_dn
@@ -73,6 +74,17 @@ def migrate_class_data(log_output_dir, post_organisation_endpoint, schools_get_e
             "typ": "KLASSE"
         }
         response = requests.post(post_organisation_endpoint, json=post_data, headers=headers)
+        
+        attempt = 1
+        while attempt < 5:
+            try:
+                response = requests.post(post_organisation_endpoint, json=post_data, headers=headers)
+                break
+            except requests.RequestException as e:
+                attempt += 1
+                log(f"Create Class Request Attempt {attempt} failed: {e}. Retrying...")
+                time.sleep(5*attempt) #Exponential Backof    
+        
         number_of_api_calls += 1
         if response.status_code == 401:
             log(f"Create-Kontext-Request - 401 Unauthorized error")
