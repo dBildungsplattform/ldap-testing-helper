@@ -76,7 +76,7 @@ def get_orgaid_by_dnr(df, dnr):
         return None
     
 def get_orgaid_by_className_and_administriertvon(df, name, administriert_von, username_created_kontext_for):
-    result = df.loc[(df['name'].lower() == name.lower()) & (df['administriertVon'] == administriert_von), 'id']
+    result = df.loc[(df['name'].str.lower() == name.lower()) & (df['administriertVon'] == administriert_von), 'id']
     if not result.empty:
         return result.iloc[0]
     else:
