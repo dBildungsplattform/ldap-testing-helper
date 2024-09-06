@@ -1,4 +1,5 @@
 from datetime import datetime
+import hashlib
 import time
 import os
 import pandas as pd
@@ -134,3 +135,12 @@ def get_is_uid_object(parsedDN):
     if 'uid' in parsedDN:
         return True
     return False
+
+def get_hash_sha256_for_file(file_path):
+    sha256 = hashlib.sha256()
+
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(8192):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()

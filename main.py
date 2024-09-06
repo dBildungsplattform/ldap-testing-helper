@@ -1,5 +1,5 @@
 import os
-from helper import log
+from helper import get_hash_sha256_for_file, log
 from migrate_classes.migrate_classes import migrate_class_data
 from migrate_persons.migrate_persons import migrate_person_data
 from migrate_schools.migrate_schools import migrate_school_data
@@ -21,22 +21,38 @@ def main():
     input_ldap = os.environ['INPUT_LDAP_COMPLETE_PATH']
     if not log_output_dir:
         raise ValueError("ENV: INPUT_LDAP_COMPLETE_PATH cannot be null or empty")
+    input_ldap_sha256_hash = os.environ['INPUT_LDAP_SHA256HASH']
+    if not input_ldap_sha256_hash:
+        raise ValueError("ENV: INPUT_LDAP_SHA256HASH cannot be null or empty")
+    
+    if not get_hash_sha256_for_file(input_ldap) == input_ldap_sha256_hash:
+        raise ValueError("ENV: INPUT_LDAP_SHA256HASH doesnt match the actual provided input_ldap files hash")
+    else: 
+        log('LDAP Hashes are matching')
 
     if migration_type == 'SCHOOLS':
         log("")
         log("Selected Migration Type: SCHOOLS")
         schools_post_endpoint = os.environ['MIGRATION_SCHOOLS_POST_ENDPOINT']
         oeff_and_ersatz_uuid_get_endpoint = os.environ['MIGRATION_SCHOOLS_UUID_ERSATZ_OEFFENTLICH_ENDPOINT']
-        input_excel_oeff_schools = os.environ['MIGRATE_SCHOOLS_INPUT_EXCEL_COMPLETE_PATH']
+        input_excel_schools = os.environ['MIGRATE_SCHOOLS_INPUT_EXCEL_COMPLETE_PATH']
+        input_excel_sha256_hash = os.environ['INPUT_EXCEL_SHA256HASH']
 
         if not schools_post_endpoint:
             raise ValueError("ENV: MIGRATION_SCHOOLS_POST_ENDPOINT cannot be null or empty")
         if not oeff_and_ersatz_uuid_get_endpoint:
             raise ValueError("ENV: MIGRATION_SCHOOLS_UUID_ERSATZ_OEFFENTLICH_ENDPOINT cannot be null or empty")
-        if not input_excel_oeff_schools:
+        if not input_excel_schools:
             raise ValueError("ENV: MIGRATE_SCHOOLS_INPUT_EXCEL_COMPLETE_PATH cannot be null or empty")
+        if not input_excel_sha256_hash:
+            raise ValueError("ENV: INPUT_EXCEL_SHA256HASH cannot be null or empty")
+        
+        if not get_hash_sha256_for_file(input_excel_schools) == input_excel_sha256_hash:
+            raise ValueError("ENV: INPUT_EXCEL_SHA256HASH doesnt match the actual provided excel files hash")
+        else: 
+            log('Excel Hashes are matching')
 
-        migrate_school_data(log_output_dir, schools_post_endpoint, oeff_and_ersatz_uuid_get_endpoint, input_excel_oeff_schools,
+        migrate_school_data(log_output_dir, schools_post_endpoint, oeff_and_ersatz_uuid_get_endpoint, input_excel_schools,
                             input_ldap)
         
     if migration_type == 'CLASSES':
