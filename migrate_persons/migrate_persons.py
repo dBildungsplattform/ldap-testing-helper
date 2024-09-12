@@ -30,7 +30,7 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
     log("")
     log(f"### STARTING 400 THREADS ###")
     log("")
-    df_parts = np.array_split(df_ldap, 400)
+    df_parts = np.array_split(df_ldap, 100)
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [executor.submit(process_df_part, index, df_part, school_uuid_dnr_mapping, class_nameAndAdministriertvon_uuid_mapping, roleid_sus, roleid_schuladmin, roleid_lehrkraft, roleid_schulbegleitung, create_person_post_endpoint, create_kontext_post_endpoint) for index, df_part in enumerate(df_parts)]
         results = [future.result() for future in concurrent.futures.as_completed(futures)]
