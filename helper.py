@@ -56,6 +56,14 @@ def get_school_dnr_uuid_mapping(get_organisation_endpoint):
             'Content-Type': 'application/json; charset=utf-8',
             'Authorization': 'Bearer ' + access_token
         }
+        
+        responseTest = requests.get(get_organisation_endpoint, headers=headers)
+        log("responseTest")
+        log(responseTest)
+        response_test_json = responseTest.json()
+        log(response_test_json)
+        
+        log("response")
         response = requests.get(get_organisation_endpoint+'?typ=SCHULE', headers=headers)
         response.raise_for_status()
         response_json = response.json()
