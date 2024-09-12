@@ -59,7 +59,9 @@ def get_school_dnr_uuid_mapping(get_organisation_endpoint):
         response = requests.get(get_organisation_endpoint+'?typ=SCHULE', headers=headers)
         response.raise_for_status()
         response_json = response.json()
+        print(response_json)
         df = pd.DataFrame(response_json)
+        print(df.head())
         df = df[['id', 'kennung']].rename(columns={'kennung': 'dnr'})
         return df
     
