@@ -1,8 +1,14 @@
+from datetime import datetime
+import hashlib
+import time
 import os
 import pandas as pd
 import requests
 from dotenv import load_dotenv
 import ldap.dn
+
+def log(x):
+    print(f"{datetime.now()} : {x}")
 
 def get_access_token():
     token_url = os.getenv('TOKEN_URL')
@@ -16,11 +22,23 @@ def get_access_token():
     token_headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-
-    token_response = requests.post(token_url, data=payload, headers=token_headers)
-    token_response_json = token_response.json()
-    token = token_response_json.get('access_token')
-    return token
+    attempt = 1
+    while attempt < 5:
+        try:
+            token_response = requests.post(token_url, data=payload, headers=token_headers)
+            token_response.raise_for_status()  # Raises an error for bad responses (4xx or 5xx)
+            token_response_json = token_response.json()
+            token = token_response_json.get('access_token')
+            if token:
+                return token
+            else:
+                raise Exception("Access token not found in the response.")
+        except requests.RequestException as e:
+            attempt += 1
+            print(f"Get Access Token Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt)
+    
+    raise Exception("Max retries exceeded. Failed to obtain access token.")
 
 def get_oeffentlich_and_ersatz_uuid(get_oeff_and_ersatz_UUID_endpoint):
         access_token = get_access_token()
@@ -38,6 +56,7 @@ def get_school_dnr_uuid_mapping(get_organisation_endpoint):
             'Content-Type': 'application/json; charset=utf-8',
             'Authorization': 'Bearer ' + access_token
         }
+        
         response = requests.get(get_organisation_endpoint+'?typ=SCHULE', headers=headers)
         response.raise_for_status()
         response_json = response.json()
@@ -79,8 +98,14 @@ def get_rolle_id(get_role_endpoint, name):
     response.raise_for_status()
     response_json = response.json()
     
-    if len(response_json) != 1:
-        raise Exception("Response does not contain exactly one element")
+    if len(response_json) < 1:
+        raise Exception("Response does not contain any elements")
+    if len(response_json)>0:
+        log(f"At least one result, filtering by name exactly: {name}")
+        for element in response_json:
+            if element['name'] == name:
+                return element['id']
+        raise Exception(f"Role {name} not found")
     
     return response_json[0].get('id')
     
@@ -111,3 +136,12 @@ def get_is_uid_object(parsedDN):
     if 'uid' in parsedDN:
         return True
     return False
+
+def get_hash_sha256_for_file(file_path):
+    sha256 = hashlib.sha256()
+
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(8192):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()

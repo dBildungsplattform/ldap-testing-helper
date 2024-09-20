@@ -1,11 +1,12 @@
 from datetime import datetime
+import time
 import os
 import sys
 import pandas as pd
 import requests
 import ldap.dn
 
-from helper import get_access_token
+from helper import get_access_token, log
 
 def get_schools_dnr_for_create_admin_kontext(filtered_memberOf):
     admin_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('admin-')]
@@ -35,10 +36,17 @@ def create_person_api_call(create_person_post_endpoint, headers, email, sn, give
         "hashedPassword": hashed_password,
         "personalnummer":kopersnr
     }
-    print(f"    {datetime.now()}POST START FOR {username}")
-    response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
-    print(f"    {datetime.now()}POST END FOR {username} {response_create_person.json()}")
-    return response_create_person
+    attempt = 1
+    while attempt < 5:
+        try:
+            response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
+            return response_create_person
+        except requests.RequestException as e:
+            attempt += 1
+            log(f"Create Person Request Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt) #Exponential Backof
+    
+    raise Exception("Max retries exceeded. The request failed.")
 
 def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, organisationId, rolleId):
     post_data_create_kontext = {
@@ -46,23 +54,33 @@ def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, org
         "organisationId": organisationId,
         "rolleId": rolleId
     }
-    response_create_kontext = requests.post(create_kontext_post_endpoint, json=post_data_create_kontext, headers=headers)
-    return response_create_kontext
+    
+    attempt = 1
+    while attempt < 5:
+        try:
+            response_create_kontext = requests.post(create_kontext_post_endpoint, json=post_data_create_kontext, headers=headers)
+            return response_create_kontext
+        except requests.RequestException as e:
+            attempt += 1
+            log(f"Create Kontext Request Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt) #Exponential Backof
+    
+    raise Exception("Max retries exceeded. The request failed.")
 
 def get_orgaid_by_dnr(df, dnr):
     result = df.loc[df['dnr'] == dnr, 'id']
     if not result.empty:
         return result.iloc[0]
     else:
-        print(f"No matching id found for dnr: {dnr}")
+        log(f"No matching id found for dnr: {dnr}")
         return None
     
-def get_orgaid_by_className_and_administriertvon(df, name, administriert_von):
-    result = df.loc[(df['name'] == name) & (df['administriertVon'] == administriert_von), 'id']
+def get_orgaid_by_className_and_administriertvon(df, name, administriert_von, username_created_kontext_for):
+    result = df.loc[(df['name'].str.lower() == name.lower()) & (df['administriertVon'] == administriert_von), 'id']
     if not result.empty:
         return result.iloc[0]
     else:
-        print(f"No matching id found for classname: {name}")
+        log(f"No matching class_id found for classname: {name} and administriert_von: {administriert_von}, when trying to create class kontext for username: {username_created_kontext_for}")
         return None
     
     
@@ -70,7 +88,7 @@ def convert_data_from_row(row, other_log):
         email = row['krb5PrincipalName'].decode('utf-8') if isinstance(row['krb5PrincipalName'], bytes) else row['krb5PrincipalName']
         sn = row['sn'].decode('utf-8') if isinstance(row['sn'], bytes) else row['sn']
         given_name = row['givenName'].decode('utf-8') if isinstance(row['givenName'], bytes) else row['givenName']
-        kopersnr = row['ucsschoolRecordUID '].decode('utf-8') if isinstance(row['ucsschoolRecordUID '], bytes) else row['ucsschoolRecordUID ']
+        kopersnr = row['ucsschoolRecordUID'].decode('utf-8') if isinstance(row['ucsschoolRecordUID'], bytes) else row['ucsschoolRecordUID']
         username = row['uid'].decode('utf-8') if isinstance(row['uid'], bytes) else row['uid']
         hashed_password = row['userPassword'].decode('utf-8') if isinstance(row['userPassword'], bytes) else row['userPassword']
         memberOf = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
@@ -80,7 +98,7 @@ def convert_data_from_row(row, other_log):
             try:
                 memberOf_list.append(ldap.dn.str2dn(singleMemberOf)[0][0][1])
             except IndexError:
-                print(f"Warning: Malformed DN entry found: {singleMemberOf}")
+                log(f"Warning: Malformed DN entry found: {singleMemberOf}")
                 other_log.append({
                     'type':'MALFORMED_MEMBER_OF',
                     'memberOfs':memberOf,
@@ -136,7 +154,7 @@ def log_skip(skipped_persons, is_skip_because_lehreradmin, is_skip_because_fvmad
     return (number_of_total_skipped_api_calls, number_of_lehreradmin_skipped_api_calls, number_of_fvmadmin_skipped_api_calls, number_of_iqsh_skipped_api_calls, number_of_deactive_skipped_api_calls, number_of_schueler_without_klassen_skipped_api_calls)
 
 def execute_merge(potential_merge_admins, potential_merge_into_lehrer, create_kontext_post_endpoint, personenkontexte_for_person_get_endpoint, school_uuid_dnr_mapping, roleid_lehrkraft, roleid_schuladmin):
-    print('Now Starting With Lehrer - Admin Merge')
+    log('Now Starting With Lehrer - Admin Merge')
     migration_log = []
     number_of_potential_merge_from_admins = len(potential_merge_admins)
     number_of_successfully_merged_any_context_from_admin = 0
@@ -206,7 +224,7 @@ def execute_merge(potential_merge_admins, potential_merge_into_lehrer, create_ko
                 response_create_merge_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, matching_lehrer_person['person_id'], orga_id_for_mergefrom_admin, roleid_schuladmin)
                 number_of_create_merge_kontext_api_calls += 1
                 if response_create_merge_kontext.status_code == 401:
-                    print(f"{datetime.now()} : Create-Kontext-Request - 401 Unauthorized error")
+                    log(f"Create-Kontext-Request - 401 Unauthorized error")
                     sys.exit()
                 elif response_create_merge_kontext.status_code != 201:
                     number_of_create_merge_kontext_api_error_response += 1
@@ -248,44 +266,44 @@ def print_standard_run_statistics(number_of_found_persons, number_of_total_skipp
                      number_of_deactive_lehrer_api_calls, number_of_create_person_api_calls, number_of_create_person_api_error_responses, 
                      number_of_create_kontext_api_calls, number_of_create_kontext_api_error_responses, number_of_create_school_kontext_api_calls, 
                      number_of_create_school_kontext_api_error_responses, number_of_create_class_kontext_api_calls, number_of_create_class_kontext_api_error_responses):
-    print("")
-    print("")
-    print("###STANDARD RUN STATISTICS###")
-    print("")
-    print(f"Number of found Persons: {number_of_found_persons}")
-    print(f"Number of Total Skipped Persons: {number_of_total_skipped_api_calls}")
-    print(f"                Of That #ADMIN Persons: {number_of_lehreradmin_skipped_api_calls}")
-    print(f"                Of That FVM-Admin Persons: {number_of_fvmadmin_skipped_api_calls}")
-    print(f"                Of That IQSH Persons: {number_of_iqsh_skipped_api_calls}")
-    print(f"                Of That Deactive Non LehrerPersons: {number_of_deactive_skipped_api_calls}")
-    print(f"                Of That Schueler Without Any Klasse: {number_of_schueler_without_klassen_skipped_api_calls}")
-    print(f"Number of Create-Person API Calls: {number_of_create_person_api_calls}")
-    print(f"                Of That Deactive Lehrer Persons: {number_of_deactive_lehrer_api_calls}")
-    print(f'Number of Create-Person API Error Responses: {number_of_create_person_api_error_responses}')
-    print(f"Number of Total Create-Kontext API Calls: {number_of_create_kontext_api_calls}")
-    print(f"                Of That School Kontexts: {number_of_create_school_kontext_api_calls}")
-    print(f"                Of That Class Kontexts: {number_of_create_class_kontext_api_calls}")
-    print(f'Number of TotalCreate-Kontext API Error Responses: {number_of_create_kontext_api_error_responses}')
-    print(f"                Of That School Kontexts: {number_of_create_school_kontext_api_error_responses}")
-    print(f"                Of That Class Kontexts: {number_of_create_class_kontext_api_error_responses}")
-    print("")
-    print("")
+    log("")
+    log("")
+    log("### STANDARD RUN STATISTICS ###")
+    log("")
+    log(f"Number of found Persons: {number_of_found_persons}")
+    log(f"Number of Total Skipped Persons: {number_of_total_skipped_api_calls}")
+    log(f"                Of That #ADMIN Persons: {number_of_lehreradmin_skipped_api_calls}")
+    log(f"                Of That FVM-Admin Persons: {number_of_fvmadmin_skipped_api_calls}")
+    log(f"                Of That IQSH Persons: {number_of_iqsh_skipped_api_calls}")
+    log(f"                Of That Deactive Non LehrerPersons: {number_of_deactive_skipped_api_calls}")
+    log(f"                Of That Schueler Without Any Klasse: {number_of_schueler_without_klassen_skipped_api_calls}")
+    log(f"Number of Create-Person API Calls: {number_of_create_person_api_calls}")
+    log(f"                Of That Deactive Lehrer Persons: {number_of_deactive_lehrer_api_calls}")
+    log(f'Number of Create-Person API Error Responses: {number_of_create_person_api_error_responses}')
+    log(f"Number of Total Create-Kontext API Calls: {number_of_create_kontext_api_calls}")
+    log(f"                Of That School Kontexts: {number_of_create_school_kontext_api_calls}")
+    log(f"                Of That Class Kontexts: {number_of_create_class_kontext_api_calls}")
+    log(f'Number of TotalCreate-Kontext API Error Responses: {number_of_create_kontext_api_error_responses}')
+    log(f"                Of That School Kontexts: {number_of_create_school_kontext_api_error_responses}")
+    log(f"                Of That Class Kontexts: {number_of_create_class_kontext_api_error_responses}")
+    log("")
     
 def print_merge_run_statistics(number_of_potential_merge_from_admins,number_of_successfully_merged_any_context_from_admin, 
                                number_of_no_corressponding_leher_found,number_of_corressponding_lehrer_found_but_missing_school_kontext,
                                number_of_create_merge_kontext_api_calls,number_of_create_merge_kontext_api_error_response):
-    print("")
-    print("###MERGE RUN STATISTICS###")
-    print("")
-    print(f"Number of Potential Mergable Admins: {number_of_potential_merge_from_admins}")
-    print(f"                Of That Any Kontext Has Been Merged Successfully: {number_of_successfully_merged_any_context_from_admin}")
-    print(f"Number Where No Coressponding Lehrer Has Been Found: {number_of_no_corressponding_leher_found}")
-    print(f"Number Where Coressponding Lehrer Has Been Found, But Is Missing Lehrer Role On Desired Merge School: {number_of_corressponding_lehrer_found_but_missing_school_kontext}")
-    print(f"Number Of Total Create Merge Kontext Api Calls: {number_of_create_merge_kontext_api_calls}")
-    print(f"Number Of Total Create Merge Kontext Api Error Responses: {number_of_create_merge_kontext_api_error_response}")
-    print("")
+    log("")
+    log("")
+    log("### MERGE RUN STATISTICS ###")
+    log("")
+    log(f"Number of Potential Mergable Admins: {number_of_potential_merge_from_admins}")
+    log(f"                Of That Any Kontext Has Been Merged Successfully: {number_of_successfully_merged_any_context_from_admin}")
+    log(f"Number Where No Coressponding Lehrer Has Been Found: {number_of_no_corressponding_leher_found}")
+    log(f"Number Where Coressponding Lehrer Has Been Found, But Is Missing Lehrer Role On Desired Merge School: {number_of_corressponding_lehrer_found_but_missing_school_kontext}")
+    log(f"Number of Total Create Merge Kontext Api Calls: {number_of_create_merge_kontext_api_calls}")
+    log(f"Number of Total Create Merge Kontext Api Error Responses: {number_of_create_merge_kontext_api_error_response}")
+    log("")
     
-def create_and_save_log_excel(skipped_persons, failed_responses_create_person, failed_responses_create_kontext, schueler_on_school_without_klasse, other_log, migration_log):
+def create_and_save_log_excel(log_output_dir, skipped_persons, failed_responses_create_person, failed_responses_create_kontext, schueler_on_school_without_klasse, other_log, migration_log):
     # Convert the list of failed responses to a DataFrame and save to an Excel file
     skipped_persons_df = pd.DataFrame(skipped_persons)
     failed_responses_create_person_df = pd.DataFrame(failed_responses_create_person)
@@ -294,9 +312,9 @@ def create_and_save_log_excel(skipped_persons, failed_responses_create_person, f
     other_log_df = pd.DataFrame(other_log)
     migration_log_df = pd.DataFrame(migration_log)
     
-    output_dir = '/usr/src/app/output'
-    os.makedirs(output_dir, exist_ok=True)
-    excel_path = os.path.join(output_dir, 'migrate_persons_log.xlsx')
+    os.makedirs(log_output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    excel_path = os.path.join(log_output_dir, f'migrate_persons_log_{timestamp}.xlsx')
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
             skipped_persons_df.to_excel(writer, sheet_name='Skipped_Persons', index=False)
@@ -305,7 +323,7 @@ def create_and_save_log_excel(skipped_persons, failed_responses_create_person, f
             schueler_on_school_without_klasse_df.to_excel(writer, sheet_name='Schueler_On_School_No_Class', index=False)
             migration_log_df.to_excel(writer, sheet_name='Migration', index=False)
             other_log_df.to_excel(writer, sheet_name='Other', index=False)
-        print(f"Failed API responses have been saved to '{excel_path}'.")
-        print(f"Check the current working directory: {os.getcwd()}")
+        log(f"Failed API responses have been saved to '{excel_path}'.")
+        log(f"Check the current working directory: {os.getcwd()}")
     except Exception as e:
-        print(f"An error occurred while saving the Excel file: {e}")
+        log(f"An error occurred while saving the Excel file: {e}")

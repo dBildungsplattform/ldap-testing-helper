@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
 import os
 import sys
+import time
 import pandas as pd
 import requests
-from helper import get_access_token, get_is_class_object, get_school_dnr_uuid_mapping, parse_dn
-from ldif import LDIFParser, LDIFWriter
-
+from helper import get_access_token, get_is_class_object, get_school_dnr_uuid_mapping, log, parse_dn
+from ldif import LDIFParser
 from migrate_persons.person_helper import get_orgaid_by_dnr
 
 class BuildClassesDFLDIFParser(LDIFParser):
@@ -21,8 +21,8 @@ class BuildClassesDFLDIFParser(LDIFParser):
             self.number_of_found_classes += 1
             self.classes.append(parsed_dn['cn'][0])
 
-def migrate_class_data(post_organisation_endpoint, schools_get_endpoint, input_path_ldap):
-    print(f"Start Migration Classes Data")
+def migrate_class_data(log_output_dir, post_organisation_endpoint, schools_get_endpoint, input_path_ldap):
+    log(f"Start method migrate_school_data with Input {log_output_dir}, {post_organisation_endpoint}, {schools_get_endpoint}, {input_path_ldap}")
     
     error_log = []
     number_of_api_calls = 0
@@ -53,11 +53,11 @@ def migrate_class_data(post_organisation_endpoint, schools_get_endpoint, input_p
                 access_token = get_access_token()
                 headers['Authorization'] = 'Bearer ' + access_token
                 token_acquisition_time = datetime.now()
-                print(f"{datetime.now()} : Refreshed Authorization: {headers['Authorization']}")
+                log(f"Refreshed Authorization: {headers['Authorization']}")
         
         orga_id_parent_school = get_orgaid_by_dnr(school_uuid_dnr_mapping, row['school_dnr'])
         if orga_id_parent_school == None:
-            print(f"Failed Importing Class {row['class_name']} for school {row['school_dnr']}")
+            log(f"Failed Importing Class {row['class_name']} for school {row['school_dnr']}")
             error_log.append({
                 'class_name': row['class_name'],
                 'school_uuid':'MISSING',
@@ -74,12 +74,23 @@ def migrate_class_data(post_organisation_endpoint, schools_get_endpoint, input_p
             "typ": "KLASSE"
         }
         response = requests.post(post_organisation_endpoint, json=post_data, headers=headers)
+        
+        attempt = 1
+        while attempt < 5:
+            try:
+                response = requests.post(post_organisation_endpoint, json=post_data, headers=headers)
+                break
+            except requests.RequestException as e:
+                attempt += 1
+                log(f"Create Class Request Attempt {attempt} failed: {e}. Retrying...")
+                time.sleep(5*attempt) #Exponential Backof    
+        
         number_of_api_calls += 1
         if response.status_code == 401:
-            print(f"{datetime.now()} : Create-Kontext-Request - 401 Unauthorized error")
+            log(f"Create-Kontext-Request - 401 Unauthorized error")
             sys.exit()
         elif response.status_code != 201:
-            print(f"Failed Importing Class {row['class_name']} for school {row['school_dnr']}")
+            log(f"Failed Importing Class {row['class_name']} for school {row['school_dnr']}")
             number_of_api_error_responses += 1
             error_log.append({
                 'class_name': row['class_name'],
@@ -89,24 +100,28 @@ def migrate_class_data(post_organisation_endpoint, schools_get_endpoint, input_p
                 'status_code': response.status_code
             })
         else:
-            print(f"Successfully Imported Class {row['class_name']} for school {row['school_dnr']}")
+            log(f"Successfully Imported Class {row['class_name']} for school {row['school_dnr']}")
             
-    print("")
-    print("###STATISTICS###")
-    print("")
-    print(f"Number of found Classes: {len(parser.classes)}")
-    print(f"Number of API Calls: {number_of_api_calls}")
-    print(f'Number of API Error Responses: {number_of_api_error_responses}')
-    print("")
-    print("End Migration Class Data")
-            
-    output_dir = '/usr/src/app/output'
-    os.makedirs(output_dir, exist_ok=True)
-    excel_path = os.path.join(output_dir, 'migrate_classes_log.xlsx')
+    log("")
+    log("###STATISTICS###")
+    log("")
+    log(f"Number of found Classes: {len(parser.classes)}")
+    log(f"Number of API Calls: {number_of_api_calls}")
+    log(f'Number of API Error Responses: {number_of_api_error_responses}')
+    
+    log(error_log)
+    
+    error_df = pd.DataFrame(error_log)
+    os.makedirs(log_output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    excel_path = os.path.join(log_output_dir, f'migrate_classes_log_{timestamp}.xlsx')
     try:
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            error_log.to_excel(writer, sheet_name='errors', index=False)
-        print(f"Log responses have been saved to '{excel_path}'.")
-        print(f"Check the current working directory: {os.getcwd()}")
+            error_df.to_excel(writer, sheet_name='errors', index=False)
+        log(f"Log responses have been saved to '{excel_path}'.")
+        log(f"Check the current working directory: {os.getcwd()}")
     except Exception as e:
-        print(f"An error occurred while saving the Excel file: {e}")
+        log(f"An error occurred while saving the Excel file: {e}")
+        
+    log("")
+    log("End method migrate_classes_data")

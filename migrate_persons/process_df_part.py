@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 import sys
-
-from helper import get_access_token
+from helper import get_access_token, log
 from migrate_persons.person_helper import convert_data_from_row, create_kontext_api_call, create_person_api_call, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, log_skip
 
 
@@ -45,12 +44,8 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
     
     potential_merge_admins = []
     potential_merge_into_lehrer = []
-    
-    print(f"{datetime.now()} | T{thradnr} : Starting Api Requests in Thread")
 
     for index, row in df_ldap.iterrows():
-        if(thradnr == 3):
-            print(f"    {datetime.now()} | T{thradnr} : Processing DF Index {index}")
         if index % 20 == 0:
             elapsed_time = datetime.now() - token_acquisition_time
             if elapsed_time > timedelta(minutes=3):
@@ -98,7 +93,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         response_create_person = create_person_api_call(create_person_post_endpoint, headers, email, sn, given_name, username, hashed_password, kopers_nr_for_creation)
         number_of_create_person_api_calls += 1
         if response_create_person.status_code == 401:
-            print(f"{datetime.now()} : Create-Person-Request - 401 Unauthorized error")
+            log(f"Create-Person-Request - 401 Unauthorized error")
             sys.exit()
         elif response_create_person.status_code != 201:
             number_of_create_person_api_error_responses += 1
@@ -126,7 +121,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
             number_of_create_kontext_api_calls += 1
             number_of_create_school_kontext_api_calls += 1
             if response_create_kontext.status_code == 401:
-                print(f"{datetime.now()} : Create-Kontext-Request - 401 Unauthorized error")
+                log(f"Create-Kontext-Request - 401 Unauthorized error")
                 sys.exit()
             elif response_create_kontext.status_code != 201:
                 number_of_create_kontext_api_error_responses += 1
@@ -163,12 +158,12 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                             'description':'The student is at this school, but has no classes here'
                         })
                 for klasse in klassen_on_school:
-                    orgaId = get_orgaid_by_className_and_administriertvon(class_nameAndAdministriertvon_uuid_mapping, klasse, schul_kontext['orgaId']) #Klasse kann Zweifelfrei über Kombi aus Name + AdministriertVon Identifiziert werden
+                    orgaId = get_orgaid_by_className_and_administriertvon(class_nameAndAdministriertvon_uuid_mapping, klasse, schul_kontext['orgaId'], username) #Klasse kann Zweifelfrei über Kombi aus Name + AdministriertVon Identifiziert werden
                     response_create_class_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, orgaId, roleid_sus)
                     number_of_create_kontext_api_calls += 1
                     number_of_create_class_kontext_api_calls += 1
                     if response_create_class_kontext.status_code == 401:
-                        print(f"{datetime.now()} : Create-Kontext-Request - 401 Unauthorized error")
+                        log(f"Create-Kontext-Request - 401 Unauthorized error")
                         sys.exit()
                     elif response_create_class_kontext.status_code != 201:
                         number_of_create_kontext_api_error_responses += 1

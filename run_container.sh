@@ -16,8 +16,8 @@ if [ "$MIGRATION_TYPE" == "SCHOOLS" ]; then
         exit 1
     fi
 
-    ABS_INPUT_PATH_EXCEL=$(realpath "$MIGRATION_SCHOOLS_INPUT_EXCEL")
-    ABS_INPUT_PATH_LDAP=$(realpath "$MIGRATION_SCHOOLS_INPUT_LDAP")
+    ABS_INPUT_PATH_EXCEL=$(realpath "$MIGRATE_SCHOOLS_INPUT_EXCEL_")
+    ABS_INPUT_PATH_LDAP=$(realpath "$INPUT_LDAP")
 
     INPUT_DIR_EXCEL=$(dirname "${ABS_INPUT_PATH_EXCEL}")
     INPUT_FILE_EXCEL=$(basename "${ABS_INPUT_PATH_EXCEL}")
@@ -29,8 +29,8 @@ if [ "$MIGRATION_TYPE" == "SCHOOLS" ]; then
                --env-file env.list \
                -v "${INPUT_DIR_EXCEL}:/usr/src/app/data" \
                -v "${INPUT_DIR_LDAP}:/usr/src/app/data" \
-               -e MIGRATION_SCHOOLS_INPUT_EXCEL_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_EXCEL}" \
-               -e MIGRATION_SCHOOLS_INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
+               -e MIGRATE_SCHOOLS_INPUT_EXCEL_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_EXCEL}" \
+               -e INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
                ${IMAGE_NAME}
                
 elif [ "$MIGRATION_TYPE" == "PERSONS" ]; then
@@ -41,7 +41,7 @@ elif [ "$MIGRATION_TYPE" == "PERSONS" ]; then
         exit 1
     fi
 
-    ABS_INPUT_PATH_LDAP=$(realpath "$MIGRATION_PERSONS_INPUT_LDAP")
+    ABS_INPUT_PATH_LDAP=$(realpath "$INPUT_LDAP")
     INPUT_DIR_LDAP=$(dirname "${ABS_INPUT_PATH_LDAP}")
     INPUT_FILE_LDAP=$(basename "${ABS_INPUT_PATH_LDAP}")
 
@@ -49,7 +49,7 @@ elif [ "$MIGRATION_TYPE" == "PERSONS" ]; then
                --env-file env.list \
                -v "${INPUT_DIR_LDAP}:/usr/src/app/data" \
                -v "${PWD}/output:/usr/src/app/output" \
-               -e MIGRATION_PERSONS_INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
+               -e INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
                ${IMAGE_NAME}
 
 elif [ "$MIGRATION_TYPE" == "CLASSES" ]; then
@@ -60,7 +60,7 @@ elif [ "$MIGRATION_TYPE" == "CLASSES" ]; then
         exit 1
     fi
 
-    ABS_INPUT_PATH_LDAP=$(realpath "$MIGRATION_CLASSES_INPUT_LDAP")
+    ABS_INPUT_PATH_LDAP=$(realpath "$INPUT_LDAP")
     INPUT_DIR_LDAP=$(dirname "${ABS_INPUT_PATH_LDAP}")
     INPUT_FILE_LDAP=$(basename "${ABS_INPUT_PATH_LDAP}")
 
@@ -68,7 +68,7 @@ elif [ "$MIGRATION_TYPE" == "CLASSES" ]; then
                --env-file env.list \
                -v "${INPUT_DIR_LDAP}:/usr/src/app/data" \
                -v "${PWD}/output:/usr/src/app/output" \
-               -e MIGRATION_CLASSES_INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
+               -e INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
                ${IMAGE_NAME}
 else
     echo "Invalid migration type or operation aborted. No action taken."
