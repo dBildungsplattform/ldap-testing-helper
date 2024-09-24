@@ -16,22 +16,17 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
     }
     
     number_of_total_skipped_api_calls = 0
-    number_of_lehreradmin_skipped_api_calls = 0
     number_of_fvmadmin_skipped_api_calls = 0
     number_of_iqsh_skipped_api_calls = 0
     number_of_deactive_skipped_api_calls = 0
     number_of_schueler_without_klassen_skipped_api_calls = 0
-    
     number_of_create_person_api_calls = 0
     number_of_deactive_lehrer_api_calls = 0
     number_of_create_person_api_error_responses = 0
-    
     number_of_create_kontext_api_calls = 0
     number_of_create_kontext_api_error_responses = 0
-    
     number_of_create_school_kontext_api_calls = 0
     number_of_create_school_kontext_api_error_responses = 0
-    
     number_of_create_class_kontext_api_calls = 0
     number_of_create_class_kontext_api_error_responses = 0
     
@@ -41,9 +36,6 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
     failed_responses_create_kontext = []
     schueler_on_school_without_klasse = []
     other_log = []
-    
-    potential_merge_admins = []
-    potential_merge_into_lehrer = []
 
     for index, row in df_ldap.iterrows():
         if index % 20 == 0:
@@ -55,35 +47,24 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         (email, sn, given_name, kopersnr, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admin-')) or mo.endswith('-Schulbegleitung'))]       
-        is_skip_because_potential_merge_admin = ('#admin' in (sn or '').lower()) and ('sekadmin' not in (username or '').lower()) and ('extadmin' not in (username or '').lower()) #PRÜFUNG FUNKTIONIERT NUR IN ORIGINALDATEI, ANDERNFALLS MÜSSTE MAN AUF 3 BUCHSTABEN IM VORNAMEN PRÜFEN
+        is_schuladmin = ('#admin' in (sn or '').lower()) and ('sekadmin' not in (username or '').lower()) and ('extadmin' not in (username or '').lower()) #PRÜFUNG FUNKTIONIERT NUR IN ORIGINALDATEI, ANDERNFALLS MÜSSTE MAN AUF 3 BUCHSTABEN IM VORNAMEN PRÜFEN
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
         is_skip_because_iqsh = 'iqsh' in (sn or '').lower()
         is_skip_because_deactive_and_not_lehrer = any(mo for mo in filtered_memberOf if mo.endswith('DeaktivierteKonten')) and not any(mo and 'lehrer-DeaktivierteKonten' in mo for mo in filtered_memberOf)  
         is_skip_because_schueler_without_klasse =  any(mo and 'schueler-' in mo for mo in filtered_memberOf) and not any(mo and 'cn=klassen' in mo for mo in memberOf_raw)       
-        is_skip = is_skip_because_potential_merge_admin or is_skip_because_fvmadmin or is_skip_because_iqsh or is_skip_because_deactive_and_not_lehrer or is_skip_because_schueler_without_klasse
+        is_skip = is_skip_because_fvmadmin or is_skip_because_iqsh or is_skip_because_deactive_and_not_lehrer or is_skip_because_schueler_without_klasse
         
         #SKIP
         if is_skip == True:
             (number_of_total_skipped_api_calls, 
-             number_of_lehreradmin_skipped_api_calls, 
              number_of_fvmadmin_skipped_api_calls, 
              number_of_iqsh_skipped_api_calls, 
              number_of_deactive_skipped_api_calls,
-             number_of_schueler_without_klassen_skipped_api_calls) = log_skip(skipped_persons, is_skip_because_potential_merge_admin, is_skip_because_fvmadmin, 
+             number_of_schueler_without_klassen_skipped_api_calls) = log_skip(skipped_persons, is_skip_because_fvmadmin, 
                                                         is_skip_because_iqsh, is_skip_because_deactive_and_not_lehrer, is_skip_because_schueler_without_klasse, 
-                                                        number_of_total_skipped_api_calls, number_of_lehreradmin_skipped_api_calls, number_of_fvmadmin_skipped_api_calls,
+                                                        number_of_total_skipped_api_calls, number_of_fvmadmin_skipped_api_calls,
                                                         number_of_iqsh_skipped_api_calls, number_of_deactive_skipped_api_calls, number_of_schueler_without_klassen_skipped_api_calls,
                                                         username, email, sn, given_name, memberOf_raw)
-            
-            if(is_skip_because_potential_merge_admin):
-                potential_merge_admins.append({
-                    'username': username,
-                    'sn': sn,
-                    'given_name': given_name,
-                    'email':email,
-                    'memberOf_raw': memberOf_raw,
-                    'memberOf_list': memberOf_list,
-                })
             continue
         
         kopers_nr_for_creation = None
@@ -113,8 +94,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
             continue
         
         #CREATE KONTEXTS FOR PERSON
-        kontexts_for_merge_into_lehrer = response_create_person.json()
-        created_person_id = kontexts_for_merge_into_lehrer.get('person', {}).get('id')
+        created_person_id = response_create_person.json().get('person', {}).get('id')
         combined_schul_kontexts = get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping)
         for schul_kontext in combined_schul_kontexts:
             response_create_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, schul_kontext['orgaId'], schul_kontext['roleId'])
@@ -136,15 +116,6 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                     'typ': 'SCHULE_API_ERROR'
                 })
                 continue
-            
-            if(any(mo and 'lehrer' in mo for mo in filtered_memberOf)):
-                potential_merge_into_lehrer.append({
-                    'username': username,
-                    'person_id': created_person_id,
-                    'email':email,
-                    'kontexts':combined_schul_kontexts
-                })
-            
             
             #KLASSEN FÜR JEDEN SCHULKONTEXT ANLEGEN
             if schul_kontext['roleId'] == roleid_sus:
@@ -184,10 +155,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         'failed_responses_create_kontext': failed_responses_create_kontext,
         'schueler_on_school_without_klasse': schueler_on_school_without_klasse,
         'other_log': other_log,
-        'potential_merge_admins': potential_merge_admins,
-        'potential_merge_into_lehrer': potential_merge_into_lehrer,
         'number_of_total_skipped_api_calls': number_of_total_skipped_api_calls,
-        'number_of_lehreradmin_skipped_api_calls': number_of_lehreradmin_skipped_api_calls,
         'number_of_fvmadmin_skipped_api_calls': number_of_fvmadmin_skipped_api_calls,
         'number_of_iqsh_skipped_api_calls': number_of_iqsh_skipped_api_calls,
         'number_of_deactive_skipped_api_calls': number_of_deactive_skipped_api_calls,
