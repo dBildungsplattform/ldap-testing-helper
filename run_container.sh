@@ -70,6 +70,26 @@ elif [ "$MIGRATION_TYPE" == "CLASSES" ]; then
                -v "${PWD}/output:/usr/src/app/output" \
                -e INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
                ${IMAGE_NAME}
+
+elif [ "$MIGRATION_TYPE" == "ITSLEARNING_AFFILIATION" ]; then
+    docker build -t ${IMAGE_NAME} .
+
+    if [ $? -ne 0 ]; then
+        echo "Docker build failed"
+        exit 1
+    fi
+
+    ABS_INPUT_PATH_LDAP=$(realpath "$INPUT_LDAP")
+    INPUT_DIR_LDAP=$(dirname "${ABS_INPUT_PATH_LDAP}")
+    INPUT_FILE_LDAP=$(basename "${ABS_INPUT_PATH_LDAP}")
+
+    docker run --network="host" \
+               --env-file env.list \
+               -v "${INPUT_DIR_LDAP}:/usr/src/app/data" \
+               -v "${PWD}/output:/usr/src/app/output" \
+               -e INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
+               ${IMAGE_NAME}
+
 else
     echo "Invalid migration type or operation aborted. No action taken."
 fi

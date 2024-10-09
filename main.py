@@ -1,6 +1,7 @@
 import os
 from helper import get_hash_sha256_for_file, log
 from migrate_classes.migrate_classes import migrate_class_data
+from migrate_itslearning_affiliation.migrate_itslearning_affiliation import migrate_itslearning_affiliation_data
 from migrate_persons.migrate_persons import migrate_person_data
 from migrate_schools.migrate_schools import migrate_school_data
 
@@ -71,24 +72,41 @@ def main():
     if migration_type == 'PERSONS':
         log("")
         log("Selected Migration Type: PERSONS")
-        create_person_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON']
-        create_kontext_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_KONTEXT']
-        orgas_get_endpoint = os.environ['MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT']
-        roles_get_endpoint = os.environ['MIGRATION_PERSONS_GET_ROLES_ENDPOINT']
+        migrate_persons_create_person_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON']
+        migrate_persons_create_kontext_post_endpoint = os.environ['MIGRATION_PERSONS_POST_ENDPOINT_CREATE_KONTEXT']
+        migrate_persons_orgas_get_endpoint = os.environ['MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT']
+        migrate_persons_roles_get_endpoint = os.environ['MIGRATION_PERSONS_GET_ROLES_ENDPOINT']
         personenkontexte_for_person_get_endpoint = os.environ['MIGRATION_PERSONS_GET_PERSONENKONTEXTE_FOR_PERSON_ENDPOINT']
 
-        if not create_person_post_endpoint:
+        if not migrate_persons_create_person_post_endpoint:
             raise ValueError("ENV: MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON cannot be null or empty")
-        if not create_kontext_post_endpoint:
+        if not migrate_persons_create_kontext_post_endpoint:
             raise ValueError("ENV: MIGRATION_PERSONS_POST_ENDPOINT_CREATE_KONTEXT cannot be null or empty")
-        if not orgas_get_endpoint:
+        if not migrate_persons_orgas_get_endpoint:
             raise ValueError("ENV: MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT cannot be null or empty")
-        if not roles_get_endpoint:
+        if not migrate_persons_roles_get_endpoint:
             raise ValueError("ENV: MIGRATION_PERSONS_GET_ROLES_ENDPOINT cannot be null or empty")
         if not personenkontexte_for_person_get_endpoint:
             raise ValueError("ENV: MIGRATION_PERSONS_GET_PERSONENKONTEXTE_FOR_PERSON_ENDPOINT cannot be null or empty")
 
-        migrate_person_data(log_output_dir, create_person_post_endpoint, create_kontext_post_endpoint, orgas_get_endpoint, roles_get_endpoint, personenkontexte_for_person_get_endpoint, input_ldap)
+        migrate_person_data(log_output_dir, migrate_persons_create_person_post_endpoint, migrate_persons_create_kontext_post_endpoint, migrate_persons_orgas_get_endpoint, migrate_persons_roles_get_endpoint, personenkontexte_for_person_get_endpoint, input_ldap)
+        
+    if migration_type == 'ITSLEARNING_AFFILIATION':
+        log("")
+        log("Selected Migration Type: ITSLEARNING_AFFILIATION")
+        itslearning_affiliation_create_kontext_post_endpoint = os.environ['MIGRATE_ITSLEARNING_AFFILIATION_CREATE_KONTEXT_POST_ENDPOINT']
+        itslearning_affiliation_orgas_get_endpoint = os.environ['MIGRATE_ITSLEARNING_AFFILIATION_ORGAS_GET_ENDPOINT']
+        itslearning_affiliation_roles_get_endpoint = os.environ['MIGRATE_ITSLEARNING_AFFILIATION_ROLES_GET_ENDPOINT']
+
+        if not itslearning_affiliation_create_kontext_post_endpoint:
+            raise ValueError("ENV: ITSLEARNING_AFFILIATION_CREATE_KONTEXT_POST_ENDPOINT cannot be null or empty")
+        if not itslearning_affiliation_orgas_get_endpoint:
+            raise ValueError("ENV: ITSLEARNING_AFFILIATION_ORGAS_GET_ENDPOINT cannot be null or empty")
+        if not itslearning_affiliation_roles_get_endpoint:
+            raise ValueError("ENV: ITSLEARNING_AFFILIATION_ROLES_GET_ENDPOINT cannot be null or empty")
+
+
+        migrate_itslearning_affiliation_data(log_output_dir, itslearning_affiliation_create_kontext_post_endpoint, itslearning_affiliation_orgas_get_endpoint, itslearning_affiliation_roles_get_endpoint, input_ldap)
         
     log("")
     log("###########################")

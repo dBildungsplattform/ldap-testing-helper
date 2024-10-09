@@ -88,7 +88,9 @@ def get_rolle_id(get_role_endpoint, name):
         'SuS': 'SuS',
         'Lehrkraft': 'Lehrkraft',
         'Schuladmin': 'Schuladmin',
-        'Schulbegleitung': 'Schulbegleitung'
+        'Schulbegleitung': 'Schulbegleitung',
+        'itslearning Admin': 'itslearning Admin',
+        'itslearning Lehrkraft': 'itslearning Lehrkraft'
     }
     
     if name not in role_map:
@@ -135,6 +137,20 @@ def get_is_class_object(parsedDN):
 def get_is_uid_object(parsedDN):
     if 'uid' in parsedDN:
         return True
+    return False
+
+def get_is_itslearning_lehrer_or_admin_group_object(parsedDN, entry):
+    if ('cn' in parsedDN) and ('groups' in parsedDN['cn']) and (
+        any(cn_item.startswith('admins-') for cn_item in parsedDN['cn']) or 
+        any(cn_item.startswith('lehrer-') for cn_item in parsedDN['cn'])
+    ):
+        if 'enabledServiceProviderIdentifierGroup' in entry:
+            decoded_identifiers = [
+                identifier_group.decode('utf-8') if isinstance(identifier_group, bytes) else identifier_group 
+                for identifier_group in entry['enabledServiceProviderIdentifierGroup']
+            ]
+            if any('https://eu1.itslearning.com' in identifier_group for identifier_group in decoded_identifiers):
+                return True
     return False
 
 def get_hash_sha256_for_file(file_path):

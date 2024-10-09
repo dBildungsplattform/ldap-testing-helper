@@ -49,7 +49,6 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         (entry_uuid, email, sn, given_name, kopersnr, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admin-')) or mo.endswith('-Schulbegleitung'))]       
-        is_schuladmin = ('#admin' in (sn or '').lower()) and ('sekadmin' not in (username or '').lower()) and ('extadmin' not in (username or '').lower()) #PRÜFUNG FUNKTIONIERT NUR IN ORIGINALDATEI, ANDERNFALLS MÜSSTE MAN AUF 3 BUCHSTABEN IM VORNAMEN PRÜFEN
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
         is_skip_because_iqsh = 'iqsh' in (sn or '').lower()
         is_skip_because_deactive_and_not_lehrer = any(mo for mo in filtered_memberOf if mo.endswith('DeaktivierteKonten')) and not any(mo and 'lehrer-DeaktivierteKonten' in mo for mo in filtered_memberOf)  
@@ -103,7 +102,16 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
             email_for_creation = None
             if(schul_kontext['type'] == 'LEHRER'):
                 email_for_creation = email
-            response_create_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, schul_kontext['orgaId'], schul_kontext['roleId'], email_for_creation)
+            response_create_kontext = create_kontext_api_call(
+                migration_run_type='STANDARD',
+                create_kontext_post_endpoint=create_kontext_post_endpoint, 
+                headers=headers, 
+                person_id=created_person_id, 
+                username=None, 
+                organisation_id=schul_kontext['orgaId'], 
+                rolle_id=schul_kontext['roleId'], 
+                email=email_for_creation
+            )
             number_of_create_kontext_api_calls += 1
             number_of_create_school_kontext_api_calls += 1
             if response_create_kontext.status_code == 401:
@@ -137,7 +145,16 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                         })
                 for klasse in klassen_on_school:
                     orgaId = get_orgaid_by_className_and_administriertvon(class_nameAndAdministriertvon_uuid_mapping, klasse, schul_kontext['orgaId'], username) #Klasse kann Zweifelfrei über Kombi aus Name + AdministriertVon Identifiziert werden
-                    response_create_class_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, orgaId, roleid_sus, None)
+                    response_create_class_kontext = create_kontext_api_call(
+                        migration_run_type='STANDARD',
+                        create_kontext_post_endpoint=create_kontext_post_endpoint, 
+                        headers=headers, 
+                        person_id=created_person_id, 
+                        username=None, 
+                        organisation_id=orgaId, 
+                        rolle_id=roleid_sus, 
+                        email=None
+                    )
                     number_of_create_kontext_api_calls += 1
                     number_of_create_class_kontext_api_calls += 1
                     if response_create_class_kontext.status_code == 401:
