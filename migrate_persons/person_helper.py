@@ -25,17 +25,16 @@ def get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf):
     return lehrer_contexts
 
 
-def create_person_api_call(create_person_post_endpoint, headers, email, sn, given_name, username, hashed_password, kopersnr):
+def create_person_api_call(create_person_post_endpoint, headers, person_id, sn, given_name, username, hashed_password, kopersnr):
     post_data_create_person = {
-        "email": email,
-        "name": {
-            "familienname": sn,
-            "vorname": given_name,
-        },
+        "personId":person_id,
+        "familienname": sn,
+        "vorname": given_name,
         "username": username,
         "hashedPassword": hashed_password,
         "personalnummer":kopersnr
     }
+    log(f"Create Person Request Body: {post_data_create_person}")
     attempt = 1
     while attempt < 5:
         try:
@@ -48,12 +47,14 @@ def create_person_api_call(create_person_post_endpoint, headers, email, sn, give
     
     raise Exception("Max retries exceeded. The request failed.")
 
-def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, organisationId, rolleId):
+def create_kontext_api_call(create_kontext_post_endpoint, headers, personId, organisationId, rolleId, email):
     post_data_create_kontext = {
         "personId": personId,
         "organisationId": organisationId,
-        "rolleId": rolleId
+        "rolleId": rolleId,
+        "email":email
     }
+    log(f"Create Kontext Request Body: {post_data_create_kontext}")
     
     attempt = 1
     while attempt < 5:
@@ -91,6 +92,7 @@ def convert_data_from_row(row, other_log):
         kopersnr = row['ucsschoolRecordUID'].decode('utf-8') if isinstance(row['ucsschoolRecordUID'], bytes) else row['ucsschoolRecordUID']
         username = row['uid'].decode('utf-8') if isinstance(row['uid'], bytes) else row['uid']
         hashed_password = row['userPassword'].decode('utf-8') if isinstance(row['userPassword'], bytes) else row['userPassword']
+        entry_uuid = row['entryUUID'].decode('utf-8') if isinstance(row['entryUUID'], bytes) else row['entryUUID']
         memberOf = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         
         memberOf_list = []
@@ -105,7 +107,7 @@ def convert_data_from_row(row, other_log):
                     'singleMemberOfCausingError':singleMemberOf
                 })
                 continue
-        return (email, sn, given_name, kopersnr, username, hashed_password, memberOf_list)
+        return (entry_uuid, email, sn, given_name, kopersnr, username, hashed_password, memberOf_list)
     
 
 def get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping):
@@ -113,10 +115,10 @@ def get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid
     lehrer_kontexts = get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf)
     schueler_kontexts = get_schools_dnr_for_create_schueler_kontext(filtered_memberOf)
     schuelbegleitungs_kontexts = get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf)
-    combined_school_kontexts = [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_sus} for dnr in schueler_kontexts]
-    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_lehrkraft} for dnr in lehrer_kontexts]
-    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schuladmin} for dnr in admin_kontexts]
-    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schulbegleitung} for dnr in schuelbegleitungs_kontexts]
+    combined_school_kontexts = [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_sus, 'type':'SCHUELER'} for dnr in schueler_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_lehrkraft, 'type':'LEHRER'} for dnr in lehrer_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schuladmin, 'type':'ADMIN'} for dnr in admin_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schulbegleitung, 'type':'SCHULBEGLEITUNG'} for dnr in schuelbegleitungs_kontexts]
     
     return combined_school_kontexts
 

@@ -12,7 +12,11 @@ class BuildPersonDFLDIFParser(LDIFParser):
         is_person = get_is_uid_object(parsed_dn)
         if is_person:
             self.number_of_found_persons += 1
+            log(f"Identified Person Nr: {self.number_of_found_persons}")
+            log(f"{parsed_dn}")
+            log(f"")
             uid = parsed_dn['uid'][0]
+            entryUUID = entry.get('entryUUID', [None])[0]
             givenName = entry.get('givenName', [None])[0]
             sn = entry.get('sn', [None])[0]
             ucsschoolRecordUID = entry.get('ucsschoolRecordUID', [None])[0]
@@ -22,6 +26,7 @@ class BuildPersonDFLDIFParser(LDIFParser):
             
             new_entry = {
                 'uid': uid,
+                'entryUUID':entryUUID,
                 'givenName': givenName,
                 'sn': sn,
                 'ucsschoolRecordUID':ucsschoolRecordUID,
@@ -30,4 +35,3 @@ class BuildPersonDFLDIFParser(LDIFParser):
                 'memberOf': memberOf
             }
             self.entries_list.append(new_entry)
-            log(f"Identified Person Nr: {self.number_of_found_persons}")

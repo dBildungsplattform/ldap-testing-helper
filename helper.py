@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import ldap.dn
 
 def log(x):
-    print(f"{datetime.now()} : {x}")
+    print(f"{datetime.now()} : {x}", flush=True)
 
 def get_access_token():
     token_url = os.getenv('TOKEN_URL')

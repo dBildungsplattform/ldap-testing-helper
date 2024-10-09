@@ -8,6 +8,8 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                     roleid_sus, roleid_schuladmin, roleid_lehrkraft, roleid_schulbegleitung, 
                     create_person_post_endpoint, create_kontext_post_endpoint):
     
+    log(f"Started Thread: {thradnr}")
+    
     access_token = get_access_token()
     token_acquisition_time = datetime.now()
     headers = {
@@ -44,7 +46,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                 access_token = get_access_token()
                 headers['Authorization'] = 'Bearer ' + access_token
                 token_acquisition_time = datetime.now()
-        (email, sn, given_name, kopersnr, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
+        (entry_uuid, email, sn, given_name, kopersnr, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admin-')) or mo.endswith('-Schulbegleitung'))]       
         is_schuladmin = ('#admin' in (sn or '').lower()) and ('sekadmin' not in (username or '').lower()) and ('extadmin' not in (username or '').lower()) #PRÜFUNG FUNKTIONIERT NUR IN ORIGINALDATEI, ANDERNFALLS MÜSSTE MAN AUF 3 BUCHSTABEN IM VORNAMEN PRÜFEN
@@ -71,7 +73,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         if(any(mo and 'lehrer-' in mo for mo in filtered_memberOf)):
             kopers_nr_for_creation = kopersnr
   
-        response_create_person = create_person_api_call(create_person_post_endpoint, headers, email, sn, given_name, username, hashed_password, kopers_nr_for_creation)
+        response_create_person = create_person_api_call(create_person_post_endpoint, headers, entry_uuid, sn, given_name, username, hashed_password, kopers_nr_for_creation)
         number_of_create_person_api_calls += 1
         if response_create_person.status_code == 401:
             log(f"Create-Person-Request - 401 Unauthorized error")
@@ -87,6 +89,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                 'error_response_body': response_create_person.json(),
                 'status_code': response_create_person.status_code
             })
+            log(f"Create Person API Error Response: {response_create_person.json()}")
             continue
 
         if any(mo and 'lehrer-DeaktivierteKonten' in mo for mo in filtered_memberOf) is True: #No Kontexts For Deactive Lehrers
@@ -97,7 +100,10 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         created_person_id = response_create_person.json().get('person', {}).get('id')
         combined_schul_kontexts = get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping)
         for schul_kontext in combined_schul_kontexts:
-            response_create_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, schul_kontext['orgaId'], schul_kontext['roleId'])
+            email_for_creation = None
+            if(schul_kontext['type'] == 'LEHRER'):
+                email_for_creation = email
+            response_create_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, schul_kontext['orgaId'], schul_kontext['roleId'], email_for_creation)
             number_of_create_kontext_api_calls += 1
             number_of_create_school_kontext_api_calls += 1
             if response_create_kontext.status_code == 401:
@@ -115,6 +121,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                     'status_code': response_create_kontext.status_code,
                     'typ': 'SCHULE_API_ERROR'
                 })
+                log(f"Create Kontext API Error Response: {response_create_kontext.json()}")
                 continue
             
             #KLASSEN FÜR JEDEN SCHULKONTEXT ANLEGEN
@@ -130,7 +137,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                         })
                 for klasse in klassen_on_school:
                     orgaId = get_orgaid_by_className_and_administriertvon(class_nameAndAdministriertvon_uuid_mapping, klasse, schul_kontext['orgaId'], username) #Klasse kann Zweifelfrei über Kombi aus Name + AdministriertVon Identifiziert werden
-                    response_create_class_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, orgaId, roleid_sus)
+                    response_create_class_kontext = create_kontext_api_call(create_kontext_post_endpoint, headers, created_person_id, orgaId, roleid_sus, None)
                     number_of_create_kontext_api_calls += 1
                     number_of_create_class_kontext_api_calls += 1
                     if response_create_class_kontext.status_code == 401:
@@ -148,6 +155,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                             'status_code': response_create_class_kontext.status_code,
                             'typ': 'KLASSE_API_ERROR'
                         })
+                        log(f"Create Kontext API Error Response: {response_create_class_kontext.json()}")
                         continue
     return {
         'skipped_persons': skipped_persons,
