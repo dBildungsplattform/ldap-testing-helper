@@ -5,7 +5,7 @@ import ldap.dn
 from helper import log
 
 def get_schools_dnr_for_create_admin_kontext(filtered_memberOf):
-    admin_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('admin-')]
+    admin_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('admins-')]
     return admin_contexts
 
 def get_schools_dnr_for_create_schueler_kontext(filtered_memberOf):

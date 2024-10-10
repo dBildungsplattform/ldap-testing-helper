@@ -48,7 +48,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                 token_acquisition_time = datetime.now()
         (entry_uuid, email, sn, given_name, kopersnr, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
-        filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admin-')) or mo.endswith('-Schulbegleitung'))]       
+        filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admins-')) or mo.endswith('-Schulbegleitung'))]       
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
         is_skip_because_iqsh = 'iqsh' in (sn or '').lower()
         is_skip_because_deactive_and_not_lehrer = any(mo for mo in filtered_memberOf if mo.endswith('DeaktivierteKonten')) and not any(mo and 'lehrer-DeaktivierteKonten' in mo for mo in filtered_memberOf)  
