@@ -62,6 +62,7 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, oeff_and_ers
         'Content-Type': 'application/json; charset=utf-8',
         'Authorization': 'Bearer ' + access_token
     }
+    
 
     for index, row in merged_df.iterrows():
         if(row['Classification'] == 'OEFFENTLICH' or row['Classification'] == 'SONSTIGE'):
@@ -72,10 +73,12 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, oeff_and_ers
             raise Exception('Each School must have a Classifier')
         
         name_value = "Unbekannt LDAP Import" if pd.isna(row['name1']) else row['name1']
+        email_value = None if pd.isna(row['imehl']) else row['imehl']
         post_data = {
                     "kennung": row['dnr'],
                     "name": name_value,
                     "administriertVon": parentUUID,
+                    "emailAdress":email_value,
                     "typ": "SCHULE"
         }
         
@@ -103,7 +106,7 @@ def migrate_school_data(log_output_dir, post_organisation_endpoint, oeff_and_ers
                 'status_code': response.status_code
             })
         else:
-            log(f"Successfully Imported School {row['dnr']} with name {name_value}")
+            log(f"Successfully Imported School {row['dnr']} with name {name_value} and emailAdress {email_value}")
     
     log("")
     log("###STATISTICS###")
