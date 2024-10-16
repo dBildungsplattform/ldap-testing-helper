@@ -43,13 +43,14 @@ def create_person_api_call(create_person_post_endpoint, headers, person_id, sn, 
     
     raise Exception("Max retries exceeded. The request failed.")
 
-def create_kontext_api_call(migration_run_type, create_kontext_post_endpoint, headers, person_id, username, organisation_id, rolle_id, email):
+def create_kontext_api_call(migration_run_type, create_kontext_post_endpoint, headers, person_id, username, organisation_id, rolle_id, email, befristung_valid_jsdate):
     post_data_create_kontext = {
         "personId": person_id,
         "username":username,
         "organisationId": organisation_id,
         "rolleId": rolle_id,
         "email":email,
+        "befristung":befristung_valid_jsdate,
         "migrationRunType":migration_run_type
     }
     log(f"Create Kontext Request Body: {post_data_create_kontext}")
@@ -91,6 +92,7 @@ def convert_data_from_row(row, other_log):
         username = row['uid'].decode('utf-8') if isinstance(row['uid'], bytes) else row['uid']
         hashed_password = row['userPassword'].decode('utf-8') if isinstance(row['userPassword'], bytes) else row['userPassword']
         entry_uuid = row['entryUUID'].decode('utf-8') if isinstance(row['entryUUID'], bytes) else row['entryUUID']
+        befristung = row['krb5ValidEnd'].decode('utf-8') if isinstance(row['krb5ValidEnd'], bytes) else row['krb5ValidEnd']
         memberOf = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         
         memberOf_list = []
@@ -100,12 +102,13 @@ def convert_data_from_row(row, other_log):
             except IndexError:
                 log(f"Warning: Malformed DN entry found: {singleMemberOf}")
                 other_log.append({
+                    'username':username,
                     'type':'MALFORMED_MEMBER_OF',
                     'memberOfs':memberOf,
                     'singleMemberOfCausingError':singleMemberOf
                 })
                 continue
-        return (entry_uuid, email, sn, given_name, kopersnr, username, hashed_password, memberOf_list)
+        return (entry_uuid, email, sn, given_name, kopersnr, username, befristung, hashed_password, memberOf_list)
     
 
 def get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping):

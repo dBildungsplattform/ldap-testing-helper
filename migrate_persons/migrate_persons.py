@@ -41,6 +41,7 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
         'failed_responses_create_kontext': [],
         'schueler_on_school_without_klasse': [],
         'other_log': [],
+        'invalid_befristung_log':[],
         'number_of_total_skipped_api_calls': 0,
         'number_of_fvmadmin_skipped_api_calls': 0,
         'number_of_iqsh_skipped_api_calls': 0,
@@ -54,7 +55,8 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
         'number_of_create_school_kontext_api_calls': 0,
         'number_of_create_school_kontext_api_error_responses': 0,
         'number_of_create_class_kontext_api_calls': 0,
-        'number_of_create_class_kontext_api_error_responses': 0
+        'number_of_create_class_kontext_api_error_responses': 0,
+        'number_of_migrated_persons_with_befristung_found':0
     }
 
     for result in results:
@@ -75,6 +77,7 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
     log(f"                Of That Deactive Non LehrerPersons: {combined_results['number_of_deactive_skipped_api_calls']}")
     log(f"                Of That Schueler Without Any Klasse: {combined_results['number_of_schueler_without_klassen_skipped_api_calls']}")
     log(f"Number of Create-Person API Calls: {combined_results['number_of_create_person_api_calls']}")
+    log(f"                Of That with Befristung: {combined_results['number_of_migrated_persons_with_befristung_found']}")
     log(f"                Of That Deactive Lehrer Persons: {combined_results['number_of_deactive_lehrer_api_calls']}")
     log(f"Number of Create-Person API Error Responses: {combined_results['number_of_create_person_api_error_responses']}")
     log(f"Number of Total Create-Kontext API Calls: {combined_results['number_of_create_kontext_api_calls']}")
@@ -91,6 +94,7 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
     failed_responses_create_kontext_df = pd.DataFrame(combined_results['failed_responses_create_kontext'])
     schueler_on_school_without_klasse_df = pd.DataFrame(combined_results['schueler_on_school_without_klasse'])
     other_log_df = pd.DataFrame(combined_results['other_log'])
+    invalid_befristung_log_df = pd.DataFrame(combined_results['invalid_befristung_log'])
     os.makedirs(log_output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     excel_path = os.path.join(log_output_dir, f'migrate_persons_log_{timestamp}.xlsx')
@@ -100,6 +104,7 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
             failed_responses_create_person_df.to_excel(writer, sheet_name='Failed_Api_Create_Person', index=False)
             failed_responses_create_kontext_df.to_excel(writer, sheet_name='Failed_Api_Create_Kontext', index=False)
             schueler_on_school_without_klasse_df.to_excel(writer, sheet_name='Schueler_On_School_No_Class', index=False)
+            invalid_befristung_log_df.to_excel(writer, sheet_name='Invalid_Befristung', index=False)
             other_log_df.to_excel(writer, sheet_name='Other', index=False)
         log(f"Failed API responses have been saved to '{excel_path}'.")
         log(f"Check the current working directory: {os.getcwd()}")

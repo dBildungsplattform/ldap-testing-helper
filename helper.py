@@ -161,3 +161,13 @@ def get_hash_sha256_for_file(file_path):
             sha256.update(chunk)
 
     return sha256.hexdigest()
+
+def parse_and_convert_tojsdate(date_string):
+    date_format = "%Y%m%d%H%M%SZ"
+    try:
+        dt = datetime.strptime(date_string, date_format)
+        js_date_string = dt.isoformat() + 'Z'
+        return js_date_string
+
+    except ValueError:
+        raise ValueError(f"Invalid date format: '{date_string}'. Expected format: '{date_format}'.")

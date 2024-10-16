@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import sys
-from helper import get_access_token, log
+from helper import get_access_token, log, parse_and_convert_tojsdate
 from migrate_persons.person_helper import convert_data_from_row, create_kontext_api_call, create_person_api_call, get_combinded_school_kontexts_to_create_for_person, get_orgaid_by_className_and_administriertvon, log_skip
 
 
@@ -31,12 +31,14 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
     number_of_create_school_kontext_api_error_responses = 0
     number_of_create_class_kontext_api_calls = 0
     number_of_create_class_kontext_api_error_responses = 0
+    number_of_migrated_persons_with_befristung_found = 0
     
     # DataFrame to store failed API responses
     skipped_persons = []
     failed_responses_create_person = []
     failed_responses_create_kontext = []
     schueler_on_school_without_klasse = []
+    invalid_befristung_log = []
     other_log = []
 
     for index, row in df_ldap.iterrows():
@@ -46,7 +48,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                 access_token = get_access_token()
                 headers['Authorization'] = 'Bearer ' + access_token
                 token_acquisition_time = datetime.now()
-        (entry_uuid, email, sn, given_name, kopersnr, username, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
+        (entry_uuid, email, sn, given_name, kopersnr, username, befristung, hashed_password, memberOf_list) = convert_data_from_row(row, other_log)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admins-')) or mo.endswith('-Schulbegleitung'))]       
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
@@ -95,6 +97,20 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
             number_of_deactive_lehrer_api_calls += 1
             continue
         
+        befristung_valid_jsdate = None
+        if befristung != None:
+            number_of_migrated_persons_with_befristung_found += 1
+            try:
+                befristung_valid_jsdate = parse_and_convert_tojsdate(befristung)
+            except ValueError as e:
+                invalid_befristung_log.append({
+                'username': username,
+                'familienname': sn,
+                'vorname': given_name,
+                'description':'Befristung with invalid format found. All Kontexts for this person will be created without Befristung',
+                'technical_error':e
+            })
+        
         #CREATE KONTEXTS FOR PERSON
         created_person_id = response_create_person.json().get('person', {}).get('id')
         combined_schul_kontexts = get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping)
@@ -110,7 +126,8 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                 username=None, 
                 organisation_id=schul_kontext['orgaId'], 
                 rolle_id=schul_kontext['roleId'], 
-                email=email_for_creation
+                email=email_for_creation,
+                befristung_valid_jsdate=befristung_valid_jsdate
             )
             number_of_create_kontext_api_calls += 1
             number_of_create_school_kontext_api_calls += 1
@@ -153,7 +170,8 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
                         username=None, 
                         organisation_id=orgaId, 
                         rolle_id=roleid_sus, 
-                        email=None
+                        email=None,
+                        befristung_valid_jsdate=befristung_valid_jsdate
                     )
                     number_of_create_kontext_api_calls += 1
                     number_of_create_class_kontext_api_calls += 1
@@ -180,6 +198,7 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         'failed_responses_create_kontext': failed_responses_create_kontext,
         'schueler_on_school_without_klasse': schueler_on_school_without_klasse,
         'other_log': other_log,
+        'invalid_befristung_log': invalid_befristung_log,
         'number_of_total_skipped_api_calls': number_of_total_skipped_api_calls,
         'number_of_fvmadmin_skipped_api_calls': number_of_fvmadmin_skipped_api_calls,
         'number_of_iqsh_skipped_api_calls': number_of_iqsh_skipped_api_calls,
@@ -193,5 +212,6 @@ def process_df_part(thradnr, df_ldap, school_uuid_dnr_mapping, class_nameAndAdmi
         'number_of_create_school_kontext_api_calls': number_of_create_school_kontext_api_calls,
         'number_of_create_school_kontext_api_error_responses': number_of_create_school_kontext_api_error_responses,
         'number_of_create_class_kontext_api_calls': number_of_create_class_kontext_api_calls,
-        'number_of_create_class_kontext_api_error_responses': number_of_create_class_kontext_api_error_responses
+        'number_of_create_class_kontext_api_error_responses': number_of_create_class_kontext_api_error_responses,
+        'number_of_migrated_persons_with_befristung_found':number_of_migrated_persons_with_befristung_found
     }
