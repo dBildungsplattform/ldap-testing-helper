@@ -1,39 +1,20 @@
 from datetime import datetime, timedelta
-import os
 import sys
 import numpy as np
 import pandas as pd
-from helper import get_access_token, get_is_itslearning_lehrer_or_admin_group_object, get_rolle_id, get_school_dnr_uuid_mapping, log, parse_dn
-from ldif import LDIFParser
-
-from migrate_persons.person_helper import create_kontext_api_call, get_orgaid_by_dnr
-
-class BuildItslearningGroupsDFLDIFParser(LDIFParser):
-    def __init__(self, input_file):
-        super().__init__(input_file)
-        self.number_of_found_itslearning_admin_or_lehrer_groups = 0
-        self.islearning_groups = []
-
-    def handle(self, dn, entry):
-        parsed_dn = parse_dn(dn)
-        is_itslearning_group_object = get_is_itslearning_lehrer_or_admin_group_object(parsed_dn, entry)
-        if is_itslearning_group_object == True:
-            self.number_of_found_itslearning_admin_or_lehrer_groups += 1
-            log(f"Identified Itslearning Group Nr: {self.number_of_found_itslearning_admin_or_lehrer_groups}")
-            log(f"{parsed_dn}")
-            log(f"")
-            self.islearning_groups.append(entry)
-            
-                
-def migrate_itslearning_affiliation_data(log_output_dir, create_kontext_post_endpoint, orgas_get_endpoint, roles_get_endpoint, input_path_ldap):
-    log(f"Start method migrate_itslearning_affiliation with Input {log_output_dir}, {create_kontext_post_endpoint}, {orgas_get_endpoint}, {roles_get_endpoint}, {input_path_ldap}")
+from helper import create_kontext_api_call, get_access_token, get_orgaid_by_dnr, get_rolle_id, get_school_dnr_uuid_mapping, log, save_to_excel
+from migrate_itslearning_affiliation.itslearning_affiliation_ldif_parser import BuildItslearningGroupsDFLDIFParser
+                         
+def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, input_ldap_complete_path):
+    log(f"Start method migrate_itslearning_affiliation with Input {log_output_dir}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {input_ldap_complete_path}")
     
-    error_log = []
+    log_api_errors = []
+    log_missing_request_data = []
     number_of_create_kontext_api_calls = 0
     number_of_create_kontext_api_error_responses = 0
     
     log(f"Start BuildPersonDFLDIFParser")
-    with open(input_path_ldap, 'rb') as input_file:
+    with open(input_ldap_complete_path, 'rb') as input_file:
         parser = BuildItslearningGroupsDFLDIFParser(input_file)
         parser.parse()
     df_ldap = pd.DataFrame(parser.islearning_groups)
@@ -46,9 +27,9 @@ def migrate_itslearning_affiliation_data(log_output_dir, create_kontext_post_end
         'Authorization': 'Bearer ' + access_token
     }
     
-    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(orgas_get_endpoint)
-    rolleid_itslearning_admin = get_rolle_id(roles_get_endpoint, 'itslearning Admin')
-    rolleid_itslearning_lehrer = get_rolle_id(roles_get_endpoint, 'itslearning Lehrkraft')
+    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen)
+    rolleid_itslearning_admin = get_rolle_id(api_backend_rolle, 'itslearning Admin')
+    rolleid_itslearning_lehrer = get_rolle_id(api_backend_rolle, 'itslearning Lehrkraft')
     log('Using The Following RolleIds:')
     log(f'itslearning Admin: {rolleid_itslearning_admin}, itslearning Lehrkraft: {rolleid_itslearning_lehrer}')
     
@@ -84,27 +65,25 @@ def migrate_itslearning_affiliation_data(log_output_dir, create_kontext_post_end
             
         for username in memberUid_list:   
             if(username == None or orga_id == None or rolle_id == None):
-                error_log.append({
+                log_missing_request_data.append({
                 'dnr': dnr,
                 'orga_id': orga_id,
                 'rolle_id':rolle_id,
                 'username':username,
-                'error_response_body': '',
-                'status_code': '',
-                'typ':'NO_REQUEST_MADE',
-                'details':'Either username or orga_id or rolle_id is missing'
+                'details':'Either username or orga_id or rolle_id is missing. No API Request was made'
                 })
                 continue
             
             response_create_kontext = create_kontext_api_call(
                 migration_run_type='ITSLEARNING',
-                create_kontext_post_endpoint=create_kontext_post_endpoint, 
+                api_backend_dbiam_personenkontext=api_backend_dbiam_personenkontext, 
                 headers=headers, 
                 person_id=None, 
                 username=username, 
                 organisation_id=orga_id, 
                 rolle_id=rolle_id, 
-                email=None
+                email=None,
+                befristung_valid_jsdate=None
             )
             number_of_create_kontext_api_calls += 1
             if response_create_kontext.status_code == 401:
@@ -112,7 +91,7 @@ def migrate_itslearning_affiliation_data(log_output_dir, create_kontext_post_end
                 sys.exit()
             elif response_create_kontext.status_code != 201:
                 number_of_create_kontext_api_error_responses += 1
-                error_log.append({
+                log_api_errors.append({
                 'dnr': dnr,
                 'orga_id': orga_id,
                 'rolle_id':rolle_id,
@@ -124,7 +103,8 @@ def migrate_itslearning_affiliation_data(log_output_dir, create_kontext_post_end
                 })
                 log(f"Create Kontext API Error Response: {response_create_kontext.json()}")
                 continue
-            
+    
+    # RUN STATISTICS      
     log("")
     log("###STATISTICS###")
     log("")
@@ -132,18 +112,11 @@ def migrate_itslearning_affiliation_data(log_output_dir, create_kontext_post_end
     log(f"Number of API Calls: {number_of_create_kontext_api_calls}")
     log(f'Number of API Error Responses: {number_of_create_kontext_api_error_responses}')
         
-    error_df = pd.DataFrame(error_log)
-    os.makedirs(log_output_dir, exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    excel_path = os.path.join(log_output_dir, f'migrate_itslearning_affiliation_{timestamp}.xlsx')
-
-    try:
-        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            error_df.to_excel(writer, sheet_name='errors', index=False)
-        log(f"Log responses have been saved to '{excel_path}'.")
-        log(f"Check the current working directory: {os.getcwd()}")
-    except Exception as e:
-        log(f"An error occurred while saving the Excel file: {e}")
-    
+    # EXCEL LOGGING   
+    log_data = {
+        'Skipped_Dueto_Missing_Request_Data': pd.DataFrame(log_missing_request_data),
+        'Failed_Api_Create_Itslearning_Kontexts': pd.DataFrame(log_api_errors)
+        }
+    save_to_excel(log_data, log_output_dir, 'migrate_itslearning_affiliation')
     log("")
     log("End method migrate_itslearning_affiliation_data")

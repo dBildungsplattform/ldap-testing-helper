@@ -1,8 +1,8 @@
 # Migration Tools
 
-For all migrations the following env variables must be provided:
+### Common Required Environment Variables
 
-### Required Environment Variables
+For all migrations the following env variables must be provided:
 
 - **MIGRATION_TYPE**: `"SCHOOLS" || "CLASSES" || "PERSONS" || "ITSLEARNING_AFFILIATION"`
 - **CLIENT_ID**: `"spsh"`
@@ -12,54 +12,56 @@ For all migrations the following env variables must be provided:
 - **GRANT_TYPE**: `"password"`
 - **TOKEN_URL**: `<Endpoint for Keycloak SPSH token>`
 - **LOG_OUTPUT_DIR**: `<path_for_log_outputs>`
-- **INPUT_LDAP**: `<path_to_input_ldap>`
+- **INPUT_LDAP_COMPLETE_PATH**: `<path_to_input_ldap>`
 - **INPUT_LDAP_SHA256HASH**: `<sha256_of_input_ldap>`
-- **INPUT_EXCEL_SHA256HASH**: `<sha256_of_input_excel>`
 
-### Migration Order
+### Code Structure
 
-The migrations build on each other and must be executed in the following order:
+- Each Migration has its own module (migrate_schools / migrate_classes / migrate_persons / migrate_itslearning_affiliation)
+- Each Migration uses its own LDIFParser to extract the for the migration needed information from the LDAP-File
+- Each Migration uses only functions defined in its own module, third party libraries or explicit shared functions defined in helper.py. (No shared Function Usage across modules)
+
+
+### Overview About The Individual Migrations
+
+Technically the migrations run independantly from each other. Logically they build on each other and must therefor be executed in the following order.:
 
 1. **SCHOOLS**
    
    ***Migrates all schools from LDAP and enriches data using an Excel table.***
 
    Needed Extra Envs:
-   - MIGRATE_SCHOOLS_INPUT_EXCEL
-   - MIGRATION_SCHOOLS_POST_ENDPOINT
-   - MIGRATION_SCHOOLS_UUID_ERSATZ_OEFFENTLICH_ENDPOINT
+   - INPUT_EXCEL_SCHOOLS_COMPLETE_PATH
+   - INPUT_EXCEL_SCHOOLS_SHA256HASH
+   - API_BACKEND_ORGANISATIONEN
+   - API_BACKEND_ORGAROOTCHILDREN
    
 2. **CLASSES**
    
    ***Migrates all classes from LDAP***.
 
    Needed Extra Envs:
-   - MIGRATION_CLASSES_POST_ENDPOINT
-   - MIGRATION_CLASSES_GET_SCHOOLS_ENDPOINT
+   - API_BACKEND_ORGANISATIONEN
    
 3. **PERSONS**
    
    ***Migrates persons along with their contexts from LDAP (excluding itslearning affiliations)***
 
    Needed Extra Envs:
-   - MIGRATION_PERSONS_POST_ENDPOINT_CREATE_PERSON
-   - MIGRATION_PERSONS_POST_ENDPOINT_CREATE_KONTEXT
-   - MIGRATION_PERSONS_GET_SCHOOLS_ENDPOINT
-   - MIGRATION_PERSONS_GET_ROLES_ENDPOINT
-   - MIGRATION_PERSONS_GET_PERSONENKONTEXTE_FOR_PERSON_ENDPOINT
+   - API_BACKEND_PERSONEN
+   - API_BACKEND_DBIAMPERSONENKONTEXT
+   - API_BACKEND_ORGANISATIONEN
+   - API_BACKEND_ROLLE
    
 4. **ITSLEARNING_AFFILIATION**
    
    ***Migrates the itslearning affiliations for teachers and admins from LDAP***
 
    Needed Extra Envs:
-   - MIGRATE_ITSLEARNING_AFFILIATION_CREATE_KONTEXT_POST_ENDPOINT
-   - MIGRATE_ITSLEARNING_AFFILIATION_ORGAS_GET_ENDPOINT
-   - MIGRATE_ITSLEARNING_AFFILIATION_ROLES_GET_ENDPOINT
+   - API_BACKEND_DBIAMPERSONENKONTEXT
+   - API_BACKEND_ORGANISATIONEN
+   - API_BACKEND_ROLLE
 
-### Additional Endpoints in Env
-
-Depending on the chosen migration, you may need to set additional endpoints in the environment. Make sure to configure them as necessary for each specific migration.
 
 ---
 

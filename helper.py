@@ -4,8 +4,9 @@ import time
 import os
 import pandas as pd
 import requests
-from dotenv import load_dotenv
 import ldap.dn
+
+# This File contains  all Helpers that can be used by all 4 modules (migrate_schools, migrate_classes, migrate_persons & migrate_itslearning_affiliation)
 
 def log(x):
     print(f"{datetime.now()} : {x}", flush=True)
@@ -40,13 +41,13 @@ def get_access_token():
     
     raise Exception("Max retries exceeded. Failed to obtain access token.")
 
-def get_oeffentlich_and_ersatz_uuid(get_oeff_and_ersatz_UUID_endpoint):
+def get_oeffentlich_and_ersatz_uuid(api_backend_orga_root_children):
         access_token = get_access_token()
         headers = {
             'Content-Type': 'application/json; charset=utf-8',
             'Authorization': 'Bearer ' + access_token
         }
-        response = requests.get(get_oeff_and_ersatz_UUID_endpoint, headers=headers)
+        response = requests.get(api_backend_orga_root_children, headers=headers)
         response_json = response.json()
         return (response_json.get('oeffentlich').get('id'),response_json.get('ersatz').get('id'))
     
@@ -64,7 +65,7 @@ def get_school_dnr_uuid_mapping(get_organisation_endpoint):
         df = df[['id', 'kennung']].rename(columns={'kennung': 'dnr'})
         return df
     
-def get_class_nameAndAdministriertvon_uuid_mapping(get_organisation_endpoint):
+def get_class_name_and_administriertvon_uuid_mapping(get_organisation_endpoint):
         access_token = get_access_token()
         headers = {
             'Content-Type': 'application/json; charset=utf-8',
@@ -76,6 +77,14 @@ def get_class_nameAndAdministriertvon_uuid_mapping(get_organisation_endpoint):
         df = pd.DataFrame(response_json)
         df = df[['id', 'name', 'administriertVon']]
         return df
+    
+def get_orgaid_by_dnr(mapping_df, dnr_to_search_for):
+    result = mapping_df.loc[mapping_df['dnr'] == dnr_to_search_for, 'id']
+    if not result.empty:
+        return result.iloc[0]
+    else:
+        log(f"No matching id found for dnr: {dnr_to_search_for}")
+        return None
     
 def get_rolle_id(get_role_endpoint, name):
     access_token = get_access_token()
@@ -171,3 +180,50 @@ def parse_and_convert_tojsdate(date_string):
 
     except ValueError:
         raise ValueError(f"Invalid date format: '{date_string}'. Expected format: '{date_format}'.")
+    
+def save_to_excel(log_data_dict, log_output_dir, filename_prefix, sheet_names=None):
+    """
+    Saves provided log data into an Excel file with multiple sheets (if applicable).
+
+    :param log_data_dict: A dictionary where keys are DataFrame names and values are DataFrames to be saved.
+    :param log_output_dir: Directory where the log file will be saved.
+    :param filename_prefix: Prefix for the generated Excel file.
+    :param sheet_names: Optional list of sheet names to use for the DataFrames. If None, default keys of log_data_dict are used.
+    """
+    os.makedirs(log_output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    excel_path = os.path.join(log_output_dir, f'{filename_prefix}_{timestamp}.xlsx')
+
+    try:
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            for i, (df_name, df) in enumerate(log_data_dict.items()):
+                sheet_name = sheet_names[i] if sheet_names and i < len(sheet_names) else df_name
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+        log(f"Log responses have been saved to '{excel_path}'.")
+        log(f"Check the current working directory: {os.getcwd()}")
+    except Exception as e:
+        log(f"An error occurred while saving the Excel file: {e}")
+        
+def create_kontext_api_call(migration_run_type, api_backend_dbiam_personenkontext, headers, person_id, username, organisation_id, rolle_id, email, befristung_valid_jsdate):
+    post_data_create_kontext = {
+        "personId": person_id,
+        "username":username,
+        "organisationId": organisation_id,
+        "rolleId": rolle_id,
+        "email":email,
+        "befristung":befristung_valid_jsdate,
+        "migrationRunType":migration_run_type
+    }
+    log(f"Create Kontext Request Body: {post_data_create_kontext}")
+    
+    attempt = 1
+    while attempt < 5:
+        try:
+            response_create_kontext = requests.post(api_backend_dbiam_personenkontext, json=post_data_create_kontext, headers=headers)
+            return response_create_kontext
+        except requests.RequestException as e:
+            attempt += 1
+            log(f"Create Kontext Request Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt) #Exponential Backof
+    
+    raise Exception("Max retries exceeded. The request failed.")

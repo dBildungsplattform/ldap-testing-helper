@@ -1,29 +1,29 @@
-import os
 import numpy as np
 import pandas as pd
-from helper import get_class_nameAndAdministriertvon_uuid_mapping, get_rolle_id, get_school_dnr_uuid_mapping, log
-from datetime import datetime
+from helper import get_class_name_and_administriertvon_uuid_mapping, get_rolle_id, get_school_dnr_uuid_mapping, log, save_to_excel
 from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
 import concurrent.futures
 from migrate_persons.process_df_part import process_df_part
                 
-def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kontext_post_endpoint, orgas_get_endpoint, roles_get_endpoint, personenkontexte_for_person_get_endpoint, input_path_ldap):
-    log(f"Start method migrate_person_data with Input {log_output_dir}, {create_person_post_endpoint}, {create_kontext_post_endpoint}, {orgas_get_endpoint}, {roles_get_endpoint}, {personenkontexte_for_person_get_endpoint}, {input_path_ldap}")
+def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, input_ldap_complete_path):
+    log(f"Start method migrate_person_data with Input {log_output_dir}, {api_backend_personen}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {input_ldap_complete_path}")
     
     log(f"Start BuildPersonDFLDIFParser")
-    with open(input_path_ldap, 'rb') as input_file:
+    with open(input_ldap_complete_path, 'rb') as input_file:
         parser = BuildPersonDFLDIFParser(input_file)
         parser.parse()
     df_ldap = pd.DataFrame(parser.entries_list)
     log(f"Finished BuildPersonDFLDIFParser")
     
-    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(orgas_get_endpoint)
-    class_nameAndAdministriertvon_uuid_mapping = get_class_nameAndAdministriertvon_uuid_mapping(orgas_get_endpoint)
+    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen)
+    class_nameAndAdministriertvon_uuid_mapping = get_class_name_and_administriertvon_uuid_mapping(api_backend_organisationen)
     
-    rolleid_sus = get_rolle_id(roles_get_endpoint, 'SuS')
-    rolleid_schuladmin = get_rolle_id(roles_get_endpoint, 'Schuladmin')
-    rolleid_lehrkraft = get_rolle_id(roles_get_endpoint, 'Lehrkraft')
-    rolleid_schulbegleitung = get_rolle_id(roles_get_endpoint, 'Schulbegleitung')
+    rolleid_sus = get_rolle_id(api_backend_rolle, 'SuS')
+    rolleid_schuladmin = get_rolle_id(api_backend_rolle, 'Schuladmin')
+    rolleid_lehrkraft = get_rolle_id(api_backend_rolle, 'Lehrkraft')
+    rolleid_schulbegleitung = get_rolle_id(api_backend_rolle, 'Schulbegleitung')
+    if not rolleid_sus or not rolleid_schuladmin or not rolleid_lehrkraft or not rolleid_schulbegleitung:
+        raise ValueError("For at least one mandatory rolle () no rolle could be fechd from backend")
     log('Using The Following RolleIds:')
     log(f'SuS: {rolleid_sus}, Schuladmin: {rolleid_schuladmin}, Lehrkraft: {rolleid_lehrkraft}, Schulbegleitung: {rolleid_schulbegleitung}')
     
@@ -32,16 +32,27 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
     log("")
     df_parts = np.array_split(df_ldap, 100)
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(process_df_part, index, df_part, school_uuid_dnr_mapping, class_nameAndAdministriertvon_uuid_mapping, rolleid_sus, rolleid_schuladmin, rolleid_lehrkraft, rolleid_schulbegleitung, create_person_post_endpoint, create_kontext_post_endpoint) for index, df_part in enumerate(df_parts)]
+        futures = [executor.submit(process_df_part, 
+            index, 
+            df_part, 
+            school_uuid_dnr_mapping, 
+            class_nameAndAdministriertvon_uuid_mapping, 
+            rolleid_sus, 
+            rolleid_schuladmin, 
+            rolleid_lehrkraft, 
+            rolleid_schulbegleitung, 
+            api_backend_personen, 
+            api_backend_dbiam_personenkontext
+        ) for index, df_part in enumerate(df_parts)]
         results = [future.result() for future in concurrent.futures.as_completed(futures)]
         
     combined_results = {
-        'skipped_persons': [],
-        'failed_responses_create_person': [],
-        'failed_responses_create_kontext': [],
-        'schueler_on_school_without_klasse': [],
-        'other_log': [],
-        'invalid_befristung_log':[],
+        'log_skipped_persons': [],
+        'log_failed_responses_create_person': [],
+        'log_failed_responses_create_kontext': [],
+        'log_schueler_on_school_without_klasse': [],
+        'log_invalid_befristung':[],
+        'log_other': [],
         'number_of_total_skipped_api_calls': 0,
         'number_of_fvmadmin_skipped_api_calls': 0,
         'number_of_iqsh_skipped_api_calls': 0,
@@ -65,7 +76,8 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
                 combined_results[key].extend(result[key])
             else:
                 combined_results[key] += result[key]
-                                     
+    
+    # RUN STATISTICS                                 
     log("")
     log("")
     log("### STANDARD RUN STATISTICS ###")
@@ -89,27 +101,15 @@ def migrate_person_data(log_output_dir, create_person_post_endpoint, create_kont
     log("")
     
     
-    skipped_persons_df = pd.DataFrame(combined_results['skipped_persons'])
-    failed_responses_create_person_df = pd.DataFrame(combined_results['failed_responses_create_person'])
-    failed_responses_create_kontext_df = pd.DataFrame(combined_results['failed_responses_create_kontext'])
-    schueler_on_school_without_klasse_df = pd.DataFrame(combined_results['schueler_on_school_without_klasse'])
-    other_log_df = pd.DataFrame(combined_results['other_log'])
-    invalid_befristung_log_df = pd.DataFrame(combined_results['invalid_befristung_log'])
-    os.makedirs(log_output_dir, exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    excel_path = os.path.join(log_output_dir, f'migrate_persons_log_{timestamp}.xlsx')
-    try:
-        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            skipped_persons_df.to_excel(writer, sheet_name='Skipped_Persons', index=False)
-            failed_responses_create_person_df.to_excel(writer, sheet_name='Failed_Api_Create_Person', index=False)
-            failed_responses_create_kontext_df.to_excel(writer, sheet_name='Failed_Api_Create_Kontext', index=False)
-            schueler_on_school_without_klasse_df.to_excel(writer, sheet_name='Schueler_On_School_No_Class', index=False)
-            invalid_befristung_log_df.to_excel(writer, sheet_name='Invalid_Befristung', index=False)
-            other_log_df.to_excel(writer, sheet_name='Other', index=False)
-        log(f"Failed API responses have been saved to '{excel_path}'.")
-        log(f"Check the current working directory: {os.getcwd()}")
-    except Exception as e:
-        log(f"An error occurred while saving the Excel file: {e}")
-    
+    # EXCEL LOGGING   
+    log_data = {
+    'Skipped_Persons': pd.DataFrame(combined_results['log_skipped_persons']),
+    'Failed_Api_Create_Person': pd.DataFrame(combined_results['log_failed_responses_create_person']),
+    'Failed_Api_Create_Kontext': pd.DataFrame(combined_results['log_failed_responses_create_kontext']),
+    'Schueler_On_School_No_Class': pd.DataFrame(combined_results['log_schueler_on_school_without_klasse']),
+    'Invalid_Befristung': pd.DataFrame(combined_results['log_invalid_befristung']),
+    'Other': pd.DataFrame(combined_results['log_other'])
+    }
+    save_to_excel(log_data, log_output_dir, 'log_migrate_persons')
     log("")
     log("End method migrate_person_data")

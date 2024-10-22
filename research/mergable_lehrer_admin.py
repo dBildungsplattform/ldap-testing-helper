@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from helper import log
-from migrate_persons.person_helper import get_schools_dnr_for_create_admin_kontext
+from migrate_persons.migrate_persons_helper import get_schools_dnr_for_create_admin_kontext
 from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
 
 

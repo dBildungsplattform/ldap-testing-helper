@@ -2,7 +2,7 @@ import time
 import requests
 import ldap.dn
 
-from helper import log
+from helper import get_orgaid_by_dnr, log
 
 def get_schools_dnr_for_create_admin_kontext(filtered_memberOf):
     admin_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('admins-')]
@@ -21,7 +21,7 @@ def get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf):
     return lehrer_contexts
 
 
-def create_person_api_call(create_person_post_endpoint, headers, person_id, sn, given_name, username, hashed_password, kopersnr):
+def create_person_api_call(api_backend_personen, headers, person_id, sn, given_name, username, hashed_password, kopersnr):
     post_data_create_person = {
         "personId":person_id,
         "familienname": sn,
@@ -34,35 +34,11 @@ def create_person_api_call(create_person_post_endpoint, headers, person_id, sn, 
     attempt = 1
     while attempt < 5:
         try:
-            response_create_person = requests.post(create_person_post_endpoint, json=post_data_create_person, headers=headers)
+            response_create_person = requests.post(api_backend_personen, json=post_data_create_person, headers=headers)
             return response_create_person
         except requests.RequestException as e:
             attempt += 1
             log(f"Create Person Request Attempt {attempt} failed: {e}. Retrying...")
-            time.sleep(5*attempt) #Exponential Backof
-    
-    raise Exception("Max retries exceeded. The request failed.")
-
-def create_kontext_api_call(migration_run_type, create_kontext_post_endpoint, headers, person_id, username, organisation_id, rolle_id, email, befristung_valid_jsdate):
-    post_data_create_kontext = {
-        "personId": person_id,
-        "username":username,
-        "organisationId": organisation_id,
-        "rolleId": rolle_id,
-        "email":email,
-        "befristung":befristung_valid_jsdate,
-        "migrationRunType":migration_run_type
-    }
-    log(f"Create Kontext Request Body: {post_data_create_kontext}")
-    
-    attempt = 1
-    while attempt < 5:
-        try:
-            response_create_kontext = requests.post(create_kontext_post_endpoint, json=post_data_create_kontext, headers=headers)
-            return response_create_kontext
-        except requests.RequestException as e:
-            attempt += 1
-            log(f"Create Kontext Request Attempt {attempt} failed: {e}. Retrying...")
             time.sleep(5*attempt) #Exponential Backof
     
     raise Exception("Max retries exceeded. The request failed.")
@@ -75,12 +51,12 @@ def get_orgaid_by_dnr(df, dnr):
         log(f"No matching id found for dnr: {dnr}")
         return None
     
-def get_orgaid_by_className_and_administriertvon(df, name, administriert_von, username_created_kontext_for):
-    result = df.loc[(df['name'].str.lower() == name.lower()) & (df['administriertVon'] == administriert_von), 'id']
+def get_orgaid_by_className_and_administriertvon(mapping_df, class_name, administriert_von):
+    result = mapping_df.loc[(mapping_df['name'].str.lower() == class_name.lower()) & (mapping_df['administriertVon'] == administriert_von), 'id']
     if not result.empty:
         return result.iloc[0]
     else:
-        log(f"No matching class_id found for classname: {name} and administriert_von: {administriert_von}, when trying to create class kontext for username: {username_created_kontext_for}")
+        log(f"No matching class_id found for classname: {class_name} and administriert_von: {administriert_von}")
         return None
     
     

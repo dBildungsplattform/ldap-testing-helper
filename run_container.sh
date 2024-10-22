@@ -16,7 +16,7 @@ if [ "$MIGRATION_TYPE" == "SCHOOLS" ]; then
         exit 1
     fi
 
-    ABS_INPUT_PATH_EXCEL=$(realpath "$MIGRATE_SCHOOLS_INPUT_EXCEL_")
+    ABS_INPUT_PATH_EXCEL=$(realpath "$INPUT_EXCEL_SCHOOLS")
     ABS_INPUT_PATH_LDAP=$(realpath "$INPUT_LDAP")
 
     INPUT_DIR_EXCEL=$(dirname "${ABS_INPUT_PATH_EXCEL}")
@@ -29,7 +29,7 @@ if [ "$MIGRATION_TYPE" == "SCHOOLS" ]; then
                --env-file env.list \
                -v "${INPUT_DIR_EXCEL}:/usr/src/app/data" \
                -v "${INPUT_DIR_LDAP}:/usr/src/app/data" \
-               -e MIGRATE_SCHOOLS_INPUT_EXCEL_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_EXCEL}" \
+               -e INPUT_EXCEL_SCHOOLS_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_EXCEL}" \
                -e INPUT_LDAP_COMPLETE_PATH="/usr/src/app/data/${INPUT_FILE_LDAP}" \
                ${IMAGE_NAME}
                
