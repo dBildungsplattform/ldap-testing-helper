@@ -1,4 +1,4 @@
-name: 'Publish image to GHCR and Helm chart to GH pages on tag'
+name: 'Publish image to GHCR on tag'
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       packages: write
       security-events: write
       contents: read
-    uses: dBildungsplattform/dbp-github-workflows/.github/workflows/image-publish-trivy.yaml@5.0.0
+    uses: dBildungsplattform/dbp-github-workflows/.github/workflows/image-publish-trivy.yaml@7
     with:
       image_name: "migration-tools"
       run_trivy_scan: true

@@ -15,7 +15,7 @@ jobs:
       contents: read
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/image-publish-trivy.yaml@7
     with:
-      image_name: "ldap-migration"
+      image_name: "migration-tools"
       run_trivy_scan: true
       image_tag_generation: 'ticket_from_branch'
       container_registry: "ghcr.io"
