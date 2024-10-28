@@ -5,11 +5,11 @@ from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
 import concurrent.futures
 from migrate_persons.process_df_part import process_df_part
                 
-def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, input_ldap_complete_path):
-    log(f"Start method migrate_person_data with Input {log_output_dir}, {api_backend_personen}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {input_ldap_complete_path}")
+def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk):
+    log(f"Start method migrate_person_data with Input {log_output_dir}, {api_backend_personen}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {ldap_chunk}")
     
     log(f"Start BuildPersonDFLDIFParser")
-    with open(input_ldap_complete_path, 'rb') as input_file:
+    with open(ldap_chunk, 'rb') as input_file:
         parser = BuildPersonDFLDIFParser(input_file)
         parser.parse()
     df_ldap = pd.DataFrame(parser.entries_list)

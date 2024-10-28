@@ -39,7 +39,7 @@ def create_person_api_call(api_backend_personen, headers, person_id, sn, given_n
         except requests.RequestException as e:
             attempt += 1
             log(f"Create Person Request Attempt {attempt} failed: {e}. Retrying...")
-            time.sleep(5*attempt) #Exponential Backof
+            time.sleep(5*attempt) #Exponential Backoff
     
     raise Exception("Max retries exceeded. The request failed.")
 

@@ -66,7 +66,7 @@ def migrate_school_data(log_output_dir, api_backend_organisationen, api_backend_
             except requests.RequestException as e:
                 attempt += 1
                 log(f"Create School Request Attempt {attempt} failed: {e}. Retrying...")
-                time.sleep(5*attempt) #Exponential Backof    
+                time.sleep(5*attempt) #Exponential Backoff    
         
         number_of_api_calls += 1
         if response.status_code == 401:

@@ -1,10 +1,27 @@
+import multiprocessing
 import os
-from helper import get_hash_sha256_for_file, log
+from helper import chunk_input_file, get_hash_sha256_for_file, log
 from migrate_classes.migrate_classes import migrate_class_data
 from migrate_itslearning_affiliation.migrate_itslearning_affiliation import migrate_itslearning_affiliation_data
 from migrate_persons.migrate_persons import migrate_person_data
 from migrate_schools.migrate_schools import migrate_school_data
 
+def migrate_person_data_wrapper(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_paths):
+    migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_paths)
+
+def run_migration_in_parallel(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_paths):
+    pool = multiprocessing.Pool(processes=os.cpu_count())
+    results = [
+        pool.apply_async(
+            migrate_person_data_wrapper, 
+            args=(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_path)
+        )
+        for ldap_chunk_path in ldap_chunk_paths
+    ]
+    pool.close()
+    pool.join()
+    for result in results:
+        result.get()
 
 def main():
     
@@ -86,8 +103,9 @@ def main():
             raise ValueError("ENV: API_BACKEND_ORGANISATIONEN cannot be null or empty")
         if not api_backend_rolle:
             raise ValueError("ENV: API_BACKEND_ROLLE cannot be null or empty")
-
-        migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, input_ldap_complete_path)
+        
+        tmp_files = chunk_input_file(input_ldap_complete_path)
+        run_migration_in_parallel(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, tmp_files)
         
     if migration_type == 'ITSLEARNING_AFFILIATION':
         log("")

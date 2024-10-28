@@ -1,5 +1,7 @@
 from datetime import datetime
 import hashlib
+import itertools
+import tempfile
 import time
 import os
 import pandas as pd
@@ -224,6 +226,29 @@ def create_kontext_api_call(migration_run_type, api_backend_dbiam_personenkontex
         except requests.RequestException as e:
             attempt += 1
             log(f"Create Kontext Request Attempt {attempt} failed: {e}. Retrying...")
-            time.sleep(5*attempt) #Exponential Backof
+            time.sleep(5*attempt) #Exponential Backoff
     
     raise Exception("Max retries exceeded. The request failed.")
+
+
+def chunk_input_file(personsDataInputLDAP):
+    temp_file_paths = []  # Store paths instead of file handles
+    temp_files = (tempfile.NamedTemporaryFile(mode="w+t", prefix="personen_import", delete=False) for _ in itertools.count())
+
+    MAX_DATASETS_PER_FILE = 100000
+    datasetCounter = 0
+    current_tmp_file = next(temp_files)
+    temp_file_paths.append(current_tmp_file.name)
+    with open(personsDataInputLDAP) as ldifFile:
+        for line in ldifFile:
+            if line == "\n":
+                datasetCounter += 1
+            if datasetCounter < MAX_DATASETS_PER_FILE:
+                current_tmp_file.write(line)
+            else:
+                datasetCounter = 0
+                current_tmp_file.close()
+                current_tmp_file = next(temp_files)
+                temp_file_paths.append(current_tmp_file.name)
+    current_tmp_file.close()
+    return temp_file_paths
