@@ -20,6 +20,6 @@ jobs:
       image_name: "migration-tools"
       run_trivy_scan: true
       image_tag_generation: "version_git_tag"
-      add_latest_tag: true
       container_registry: "ghcr.io"
       report_location: "Dockerfile"
+      add_latest_tag: true
