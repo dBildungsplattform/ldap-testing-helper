@@ -10,7 +10,7 @@ class BuildSchoolDFLDIFParser(LDIFParser):
 
     def handle(self, dn, entry):
         parsed_dn = parse_dn(dn)
-        is_school_object = get_is_school_object(parsed_dn)
+        is_school_object = get_is_school_object(parsed_dn, entry)
         if is_school_object:
             self.number_of_found_schools += 1
             self.schools.append(parsed_dn['ou'][0])

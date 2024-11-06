@@ -4,9 +4,12 @@ import numpy as np
 import pandas as pd
 from helper import create_kontext_api_call, get_access_token, get_orgaid_by_dnr, get_rolle_id, get_school_dnr_uuid_mapping, log, save_to_excel
 from migrate_itslearning_affiliation.itslearning_affiliation_ldif_parser import BuildItslearningGroupsDFLDIFParser
+          
+ROLE_NAME_ITSLEARNING_LEHRKRAFT = 'itslearning-Lehrkraft'
+ROLE_NAME_ITSLEARNING_ADMIN = 'itslearning-Administrator'
                          
-def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, input_ldap_complete_path):
-    log(f"Start method migrate_itslearning_affiliation with Input {log_output_dir}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {input_ldap_complete_path}")
+def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, input_ldap_complete_path):
+    log(f"Start method migrate_itslearning_affiliation with Input {log_output_dir}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {api_backend_orga_root_children}, {input_ldap_complete_path}")
     
     log_api_errors = []
     log_missing_request_data = []
@@ -27,9 +30,9 @@ def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_perso
         'Authorization': 'Bearer ' + access_token
     }
     
-    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen)
-    rolleid_itslearning_admin = get_rolle_id(api_backend_rolle, 'itslearning Admin')
-    rolleid_itslearning_lehrer = get_rolle_id(api_backend_rolle, 'itslearning Lehrkraft')
+    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen, api_backend_orga_root_children)
+    rolleid_itslearning_admin = get_rolle_id(api_backend_rolle, ROLE_NAME_ITSLEARNING_ADMIN)
+    rolleid_itslearning_lehrer = get_rolle_id(api_backend_rolle, ROLE_NAME_ITSLEARNING_LEHRKRAFT)
     log('Using The Following RolleIds:')
     log(f'itslearning Admin: {rolleid_itslearning_admin}, itslearning Lehrkraft: {rolleid_itslearning_lehrer}')
     

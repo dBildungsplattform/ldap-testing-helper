@@ -4,9 +4,16 @@ from helper import get_class_name_and_administriertvon_uuid_mapping, get_rolle_i
 from migrate_persons.person_ldif_parser import BuildPersonDFLDIFParser
 import concurrent.futures
 from migrate_persons.process_df_part import process_df_part
+
+ROLE_NAME_ITSLEARNING_SUS = 'itslearning-Schüler'
+ROLE_NAME_SCHULADMIN_OEFFENTLICH = 'Schuladministrator öffentlich'
+ROLE_NAME_SCHULADMIN_ERSATZ = 'Schuladministrator Ersatzschule'
+ROLE_NAME_LEHRKRAFT = 'Lehrkraft'
+ROLE_NAME_LEHRKRAFT_ERSATZ = 'Ersatzschullehrkraft'
+ROLE_NAME_SCHULBEGLEITUNG = 'Schulbegleitung'
                 
-def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk):
-    log(f"Start method migrate_person_data with Input {log_output_dir}, {api_backend_personen}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {ldap_chunk}")
+def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, ldap_chunk):
+    log(f"Start method migrate_person_data with Input {log_output_dir}, {api_backend_personen}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {api_backend_orga_root_children}, {ldap_chunk}")
     
     log(f"Start BuildPersonDFLDIFParser")
     with open(ldap_chunk, 'rb') as input_file:
@@ -15,17 +22,19 @@ def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_
     df_ldap = pd.DataFrame(parser.entries_list)
     log(f"Finished BuildPersonDFLDIFParser")
     
-    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen)
+    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen, api_backend_orga_root_children)
     class_nameAndAdministriertvon_uuid_mapping = get_class_name_and_administriertvon_uuid_mapping(api_backend_organisationen)
     
-    rolleid_sus = get_rolle_id(api_backend_rolle, 'SuS')
-    rolleid_schuladmin = get_rolle_id(api_backend_rolle, 'Schuladmin')
-    rolleid_lehrkraft = get_rolle_id(api_backend_rolle, 'Lehrkraft')
-    rolleid_schulbegleitung = get_rolle_id(api_backend_rolle, 'Schulbegleitung')
-    if not rolleid_sus or not rolleid_schuladmin or not rolleid_lehrkraft or not rolleid_schulbegleitung:
-        raise ValueError("For at least one mandatory rolle () no rolle could be fechd from backend")
+    rolleid_itslearning_sus = get_rolle_id(api_backend_rolle, ROLE_NAME_ITSLEARNING_SUS)
+    rolleid_schuladmin_oeffentlich = get_rolle_id(api_backend_rolle, ROLE_NAME_SCHULADMIN_OEFFENTLICH)
+    rolleid_schuladmin_ersatz = get_rolle_id(api_backend_rolle, ROLE_NAME_SCHULADMIN_ERSATZ)
+    rolleid_lehrkraft = get_rolle_id(api_backend_rolle, ROLE_NAME_LEHRKRAFT)
+    rolleid_lehrkraft_ersatz = get_rolle_id(api_backend_rolle, ROLE_NAME_LEHRKRAFT_ERSATZ)
+    rolleid_schulbegleitung = get_rolle_id(api_backend_rolle, ROLE_NAME_SCHULBEGLEITUNG)
+    if not rolleid_itslearning_sus or not rolleid_schuladmin_oeffentlich or not rolleid_schuladmin_ersatz or not rolleid_lehrkraft or not rolleid_lehrkraft_ersatz or not rolleid_schulbegleitung:
+        raise ValueError("For at least one mandatory rolle no rolle could be feched from backend")
     log('Using The Following RolleIds:')
-    log(f'SuS: {rolleid_sus}, Schuladmin: {rolleid_schuladmin}, Lehrkraft: {rolleid_lehrkraft}, Schulbegleitung: {rolleid_schulbegleitung}')
+    log(f'{ROLE_NAME_ITSLEARNING_SUS}: {rolleid_itslearning_sus}, {ROLE_NAME_SCHULADMIN_OEFFENTLICH}: {rolleid_schuladmin_oeffentlich}, {ROLE_NAME_SCHULADMIN_ERSATZ}: {rolleid_schuladmin_ersatz}, {ROLE_NAME_LEHRKRAFT}: {rolleid_lehrkraft}, {ROLE_NAME_LEHRKRAFT_ERSATZ}: {rolleid_lehrkraft_ersatz}, {ROLE_NAME_SCHULBEGLEITUNG}: {rolleid_schulbegleitung}')
     
     log("")
     log(f"### STARTING 100 THREADS ###")
@@ -37,9 +46,11 @@ def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_
             df_part, 
             school_uuid_dnr_mapping, 
             class_nameAndAdministriertvon_uuid_mapping, 
-            rolleid_sus, 
-            rolleid_schuladmin, 
-            rolleid_lehrkraft, 
+            rolleid_itslearning_sus, 
+            rolleid_schuladmin_oeffentlich,
+            rolleid_schuladmin_ersatz,
+            rolleid_lehrkraft,
+            rolleid_lehrkraft_ersatz,
             rolleid_schulbegleitung, 
             api_backend_personen, 
             api_backend_dbiam_personenkontext

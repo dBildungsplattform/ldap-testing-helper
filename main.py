@@ -6,15 +6,15 @@ from migrate_itslearning_affiliation.migrate_itslearning_affiliation import migr
 from migrate_persons.migrate_persons import migrate_person_data
 from migrate_schools.migrate_schools import migrate_school_data
 
-def migrate_person_data_wrapper(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_paths):
-    migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_paths)
+def migrate_person_data_wrapper(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, ldap_chunk_paths):
+    migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, ldap_chunk_paths)
 
-def run_migration_in_parallel(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_paths):
+def run_migration_in_parallel(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, ldap_chunk_paths):
     pool = multiprocessing.Pool(processes=os.cpu_count())
     results = [
         pool.apply_async(
             migrate_person_data_wrapper, 
-            args=(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, ldap_chunk_path)
+            args=(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, ldap_chunk_path)
         )
         for ldap_chunk_path in ldap_chunk_paths
     ]
@@ -88,8 +88,10 @@ def main():
         
         if not api_backend_organisationen:
             raise ValueError("ENV: API_BACKEND_ORGANISATIONEN cannot be null or empty")
+        if not api_backend_orga_root_children:
+            raise ValueError("ENV: API_BACKEND_ORGAROOTCHILDREN cannot be null or empty")
 
-        migrate_class_data(log_output_dir, api_backend_organisationen, input_ldap_complete_path)
+        migrate_class_data(log_output_dir, api_backend_organisationen, api_backend_orga_root_children, input_ldap_complete_path)
 
     if migration_type == 'PERSONS':
         log("")
@@ -103,9 +105,11 @@ def main():
             raise ValueError("ENV: API_BACKEND_ORGANISATIONEN cannot be null or empty")
         if not api_backend_rolle:
             raise ValueError("ENV: API_BACKEND_ROLLE cannot be null or empty")
+        if not api_backend_orga_root_children:
+            raise ValueError("ENV: API_BACKEND_ORGAROOTCHILDREN cannot be null or empty")
         
         tmp_files = chunk_input_file(input_ldap_complete_path)
-        run_migration_in_parallel(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, tmp_files)
+        run_migration_in_parallel(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, tmp_files)
         
     if migration_type == 'ITSLEARNING_AFFILIATION':
         log("")
@@ -117,8 +121,10 @@ def main():
             raise ValueError("ENV: API_BACKEND_ORGANISATIONEN cannot be null or empty")
         if not api_backend_rolle:
             raise ValueError("ENV: API_BACKEND_ROLLE cannot be null or empty")
+        if not api_backend_orga_root_children:
+            raise ValueError("ENV: API_BACKEND_ORGAROOTCHILDREN cannot be null or empty")
 
-        migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, input_ldap_complete_path)
+        migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, input_ldap_complete_path)
         
     log("")
     log("###########################")

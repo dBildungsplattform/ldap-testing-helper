@@ -9,9 +9,11 @@ def process_df_part(
     df_part, 
     school_uuid_dnr_mapping, 
     class_nameAndAdministriertvon_uuid_mapping, 
-    roleid_sus, 
-    roleid_schuladmin, 
-    roleid_lehrkraft, 
+    roleid_itslearning_sus, 
+    roleid_schuladmin_oeffentlich,
+    roleid_schuladmin_ersatz,
+    roleid_lehrkraft,
+    roleid_lehrkraft_ersatz,
     roleid_schulbegleitung, 
     api_backend_personen, 
     api_backend_dbiam_personenkontext
@@ -143,10 +145,13 @@ def process_df_part(
         #CREATE KONTEXTS FOR PERSON
         created_person_id = response_create_person.json().get('person', {}).get('id')
         combined_schul_kontexts = get_combinded_school_kontexts_to_create_for_person(
+            created_person_id=created_person_id,
             filtered_memberOf=filtered_memberOf, 
-            roleid_sus=roleid_sus, 
-            roleid_lehrkraft=roleid_lehrkraft, 
-            roleid_schuladmin=roleid_schuladmin, 
+            roleid_itslearning_sus=roleid_itslearning_sus, 
+            roleid_lehrkraft=roleid_lehrkraft,
+            roleid_lehrkraft_ersatz=roleid_lehrkraft_ersatz,
+            roleid_schuladmin_oeffentlich=roleid_schuladmin_oeffentlich,
+            roleid_schuladmin_ersatz=roleid_schuladmin_ersatz,
             roleid_schulbegleitung=roleid_schulbegleitung, 
             school_uuid_dnr_mapping=school_uuid_dnr_mapping
         )
@@ -186,7 +191,7 @@ def process_df_part(
                 continue
             
             #KLASSEN FÜR JEDEN SCHULKONTEXT ANLEGEN
-            if schul_kontext['roleId'] == roleid_sus:
+            if schul_kontext['roleId'] == roleid_itslearning_sus:
                 klassen_on_school = [mo.split('-', 1)[1].strip() for mo in memberOf_list if mo.startswith(schul_kontext['dnr'])]
                 if(len(klassen_on_school) == 0):
                     log_schueler_on_school_without_klasse.append({
@@ -209,7 +214,7 @@ def process_df_part(
                         person_id=created_person_id, 
                         username=None, 
                         organisation_id=orgaId, 
-                        rolle_id=roleid_sus, 
+                        rolle_id=roleid_itslearning_sus, 
                         email=None,
                         befristung_valid_jsdate=befristung_valid_jsdate
                     )
@@ -225,7 +230,7 @@ def process_df_part(
                             'username': username,
                             'person_id': created_person_id,
                             'kontext_orgaId':orgaId,
-                            'kontext_roleId': roleid_sus,
+                            'kontext_roleId': roleid_itslearning_sus,
                             'error_response_body': response_create_class_kontext.json(),
                             'status_code': response_create_class_kontext.status_code,
                             'typ': 'KLASSE_API_ERROR'

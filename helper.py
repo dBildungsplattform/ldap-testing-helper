@@ -53,19 +53,36 @@ def get_oeffentlich_and_ersatz_uuid(api_backend_orga_root_children):
         response_json = response.json()
         return (response_json.get('oeffentlich').get('id'),response_json.get('ersatz').get('id'))
     
-def get_school_dnr_uuid_mapping(get_organisation_endpoint):
-        access_token = get_access_token()
-        headers = {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Authorization': 'Bearer ' + access_token
-        }
-        
-        response = requests.get(get_organisation_endpoint+'?typ=SCHULE', headers=headers)
-        response.raise_for_status()
-        response_json = response.json()
-        df = pd.DataFrame(response_json)
-        df = df[['id', 'kennung']].rename(columns={'kennung': 'dnr'})
-        return df
+def get_school_dnr_uuid_mapping(get_organisation_endpoint, api_backend_orga_root_children):
+    
+    (oeffentlich_uuid, ersatz_uuid) = get_oeffentlich_and_ersatz_uuid(api_backend_orga_root_children)
+
+    access_token = get_access_token()
+    headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer ' + access_token
+    }
+    
+    response = requests.get(get_organisation_endpoint+'?typ=SCHULE', headers=headers)
+    response.raise_for_status()
+    response_json = response.json()
+    df = pd.DataFrame(response_json)
+    df = df[['id', 'kennung', 'administriertVon']].rename(columns={'kennung': 'dnr'})
+    
+    def determine_school_type(uuid):
+        if uuid == oeffentlich_uuid:
+            print(F"{uuid} : OEFFENTLICH")
+            return 'OEFFENTLICH'
+        elif uuid == ersatz_uuid:
+            print(F"{uuid} : ERSATZ")
+            return 'ERSATZ'
+        else:
+            raise ValueError(f"Unrecognized UUID for 'administriertVon': {uuid}")
+    
+    df['school_type'] = df['administriertVon'].apply(determine_school_type)
+    df = df.drop(columns=['administriertVon'])
+    print(df)
+    return df
     
 def get_class_name_and_administriertvon_uuid_mapping(get_organisation_endpoint):
         access_token = get_access_token()
@@ -95,19 +112,7 @@ def get_rolle_id(get_role_endpoint, name):
         'Authorization': 'Bearer ' + access_token
     }
     
-    role_map = {
-        'SuS': 'SuS',
-        'Lehrkraft': 'Lehrkraft',
-        'Schuladmin': 'Schuladmin',
-        'Schulbegleitung': 'Schulbegleitung',
-        'itslearning Admin': 'itslearning Admin',
-        'itslearning Lehrkraft': 'itslearning Lehrkraft'
-    }
-    
-    if name not in role_map:
-        raise Exception("Invalid Role Name")
-    
-    response = requests.get(f"{get_role_endpoint}?searchStr={role_map[name]}", headers=headers)
+    response = requests.get(f"{get_role_endpoint}?searchStr={name}", headers=headers)
     response.raise_for_status()
     response_json = response.json()
     
@@ -135,8 +140,18 @@ def parse_dn(dn):
             dn_attributes[attr].append(value)
     return dn_attributes
 
-def get_is_school_object(parsedDN):
-    if ('ou' in parsedDN) and ('uid' not in parsedDN) and ('cn' not in parsedDN) and ('dc' in parsedDN) and (parsedDN['dc'][0] == 'schule-sh') and (parsedDN['dc'][1] == 'de'):
+def get_is_school_object(parsedDN, entry):
+    objectClass = [
+        cls.decode('utf-8') if isinstance(cls, bytes) else cls
+        for cls in entry.get('objectClass', [])
+    ]
+    if (
+        'ou' in parsedDN and
+        'uid' not in parsedDN and
+        'cn' not in parsedDN and
+        'dc' in parsedDN and
+        'ucsschoolOrganizationalUnit' in objectClass
+    ):
         return True
     return False
 

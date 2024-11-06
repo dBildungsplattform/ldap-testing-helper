@@ -87,14 +87,48 @@ def convert_data_from_row(row, other_log):
         return (entry_uuid, email, sn, given_name, kopersnr, username, befristung, hashed_password, memberOf_list)
     
 
-def get_combinded_school_kontexts_to_create_for_person(filtered_memberOf, roleid_sus, roleid_lehrkraft, roleid_schuladmin, roleid_schulbegleitung, school_uuid_dnr_mapping):
+def get_combinded_school_kontexts_to_create_for_person(
+    created_person_id,
+    filtered_memberOf, 
+    roleid_itslearning_sus, 
+    roleid_lehrkraft,
+    roleid_lehrkraft_ersatz, 
+    roleid_schuladmin_oeffentlich,
+    roleid_schuladmin_ersatz,
+    roleid_schulbegleitung, 
+    school_uuid_dnr_mapping
+):
+    def getCorrectLehrkaftRolleId(dnr):
+        school_type_value = school_uuid_dnr_mapping.loc[school_uuid_dnr_mapping['dnr'] == dnr, 'school_type'].values
+        if school_type_value == None or school_type_value.size == 0 or school_type_value[0] is None:
+            log(f"Could Not determine CorrectLehrkaftRolleId for personId: {created_person_id}")
+            return None
+        else:
+            school_type = school_type_value[0]
+            if school_type == 'ERSATZ':
+                return roleid_lehrkraft_ersatz
+            else:
+                return roleid_lehrkraft
+        
+    def getCorrectSchuladminRolleId(dnr):
+        school_type_value = school_uuid_dnr_mapping.loc[school_uuid_dnr_mapping['dnr'] == dnr, 'school_type'].values
+        if school_type_value == None or school_type_value.size == 0 or school_type_value[0] is None:
+            log(f"Could Not determine CorrectSchuladminRolleId for personId: {created_person_id}")
+            return None
+        else:
+            school_type = school_type_value[0]
+            if school_type == 'ERSATZ':
+                return roleid_schuladmin_ersatz
+            else:
+                return roleid_schuladmin_oeffentlich
+    
     admin_kontexts = get_schools_dnr_for_create_admin_kontext(filtered_memberOf)
     lehrer_kontexts = get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf)
     schueler_kontexts = get_schools_dnr_for_create_schueler_kontext(filtered_memberOf)
     schuelbegleitungs_kontexts = get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf)
-    combined_school_kontexts = [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_sus, 'type':'SCHUELER'} for dnr in schueler_kontexts]
-    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_lehrkraft, 'type':'LEHRER'} for dnr in lehrer_kontexts]
-    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schuladmin, 'type':'ADMIN'} for dnr in admin_kontexts]
+    combined_school_kontexts = [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_itslearning_sus, 'type':'SCHUELER'} for dnr in schueler_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': getCorrectLehrkaftRolleId(dnr), 'type':'LEHRER'} for dnr in lehrer_kontexts]
+    combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': getCorrectSchuladminRolleId(dnr), 'type':'ADMIN'} for dnr in admin_kontexts]
     combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_schulbegleitung, 'type':'SCHULBEGLEITUNG'} for dnr in schuelbegleitungs_kontexts]
     
     return combined_school_kontexts

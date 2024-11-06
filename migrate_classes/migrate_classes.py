@@ -6,8 +6,8 @@ import requests
 from helper import get_access_token, get_orgaid_by_dnr, get_school_dnr_uuid_mapping, log, save_to_excel
 from migrate_classes.classes_ldif_parser import BuildClassesDFLDIFParser
 
-def migrate_class_data(log_output_dir, api_backend_organisationen, input_ldap_complete_path):
-    log(f"Start method migrate_school_data with Input {log_output_dir}, {api_backend_organisationen}, {input_ldap_complete_path}")
+def migrate_class_data(log_output_dir, api_backend_organisationen, api_backend_orga_root_children, input_ldap_complete_path):
+    log(f"Start method migrate_school_data with Input {log_output_dir}, {api_backend_orga_root_children}, {api_backend_organisationen}, {input_ldap_complete_path}")
     
     log_api_errors = []
     log_missing_schools = []
@@ -30,7 +30,7 @@ def migrate_class_data(log_output_dir, api_backend_organisationen, input_ldap_co
         'Content-Type': 'application/json; charset=utf-8',
         'Authorization': 'Bearer ' + access_token
     }
-    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen)
+    school_uuid_dnr_mapping = get_school_dnr_uuid_mapping(api_backend_organisationen, api_backend_orga_root_children)
 
     for index, row in df_ldap.iterrows():
         if index % 50 == 0:
