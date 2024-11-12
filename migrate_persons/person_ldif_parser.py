@@ -20,7 +20,7 @@ class BuildPersonDFLDIFParser(LDIFParser):
             givenName = entry.get('givenName', [None])[0]
             sn = entry.get('sn', [None])[0]
             ucsschoolRecordUID = entry.get('ucsschoolRecordUID', [None])[0]
-            krb5PrincipalName = entry.get('krb5PrincipalName', [None])[0]
+            mailPrimaryAddress = entry.get('mailPrimaryAddress', [None])[0]
             krb5ValidEnd = entry.get('krb5ValidEnd', [None])[0]
             userPassword = entry.get('userPassword', [None])[0]
             memberOf = entry.get('memberOf', [None])
@@ -31,7 +31,7 @@ class BuildPersonDFLDIFParser(LDIFParser):
                 'givenName': givenName,
                 'sn': sn,
                 'ucsschoolRecordUID':ucsschoolRecordUID,
-                'krb5PrincipalName': krb5PrincipalName,
+                'mailPrimaryAddress': mailPrimaryAddress,
                 'krb5ValidEnd':krb5ValidEnd,
                 'userPassword': userPassword,
                 'memberOf': memberOf

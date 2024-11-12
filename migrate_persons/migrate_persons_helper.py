@@ -61,7 +61,7 @@ def get_orgaid_by_className_and_administriertvon(mapping_df, class_name, adminis
     
     
 def convert_data_from_row(row, other_log):
-        email = row['krb5PrincipalName'].decode('utf-8') if isinstance(row['krb5PrincipalName'], bytes) else row['krb5PrincipalName']
+        email = row['mailPrimaryAddress'].decode('utf-8') if isinstance(row['mailPrimaryAddress'], bytes) else row['mailPrimaryAddress']
         sn = row['sn'].decode('utf-8') if isinstance(row['sn'], bytes) else row['sn']
         given_name = row['givenName'].decode('utf-8') if isinstance(row['givenName'], bytes) else row['givenName']
         kopersnr = row['ucsschoolRecordUID'].decode('utf-8') if isinstance(row['ucsschoolRecordUID'], bytes) else row['ucsschoolRecordUID']
