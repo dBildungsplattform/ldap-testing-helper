@@ -62,6 +62,36 @@ Technically the migrations run independantly from each other. Logically they bui
    - API_BACKEND_ORGANISATIONEN
    - API_BACKEND_ROLLE
 
+### SQL Skript for Itslearning Befristung
 
----
+There is the following SQL script which needs to be run after running the migrations 1-4 (Sets Befristung for Itslearning Kontexts where needed):
 
+- VAR_ROLLE_ID_ITSLEARNING_ADMIN: Replace with actual rolle_id (UUID)
+- VAR_ROLLE_ID_ITSLEARNING_LEHRER: Replace with actual rolle_id (UUID)
+
+```sql
+WITH selected_kontexts AS (
+    SELECT *
+    FROM public.personenkontext
+    WHERE person_id IN (
+        SELECT person_id
+        FROM public.personenkontext
+        WHERE befristung IS NOT NULL
+    )
+    AND (rolle_Id = 'VAR_ROLLE_ID_ITSLEARNING_ADMIN' OR rolle_id = 'VAR_ROLLE_ID_ITSLEARNING_LEHRER')
+),
+befristung_source AS (
+    SELECT person_id, MAX(befristung) AS befristung
+    FROM public.personenkontext
+    WHERE befristung IS NOT NULL
+    AND rolle_id NOT IN ('VAR_ROLLE_ID_ITSLEARNING_ADMIN', 'VAR_ROLLE_ID_ITSLEARNING_LEHRER')
+    GROUP BY person_id
+)
+ 
+UPDATE public.personenkontext pk
+SET befristung = bs.befristung
+FROM selected_kontexts sk
+JOIN befristung_source bs ON sk.person_id = bs.person_id
+WHERE pk.person_id = sk.person_id
+AND (pk.rolle_Id = sk.rolle_Id)
+AND pk.befristung IS NULL;
