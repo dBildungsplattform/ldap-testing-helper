@@ -95,3 +95,23 @@ JOIN befristung_source bs ON sk.person_id = bs.person_id
 WHERE pk.person_id = sk.person_id
 AND (pk.rolle_Id = sk.rolle_Id)
 AND pk.befristung IS NULL;
+```
+
+### SQL Skript For Itslearning Mapping Ids
+
+Gets The MappingIds For Itslearning Schools & Classes
+
+```sql
+SELECT 
+    org1.id,
+    CASE 
+        WHEN org1.typ = 'SCHULE' THEN org1.kennung
+        WHEN org1.typ = 'KLASSE' THEN CONCAT(schule.kennung, '-', org1.name)
+        ELSE NULL
+    END AS mappingId
+FROM 
+    public.organisation AS org1
+LEFT JOIN 
+    public.organisation AS schule ON org1.administriert_von = schule.id AND schule.typ = 'SCHULE';
+```
+
