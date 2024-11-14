@@ -8,13 +8,21 @@ def get_schools_dnr_for_create_admin_kontext(filtered_memberOf):
     admin_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('admins-')]
     return admin_contexts
 
-def get_schools_dnr_for_create_schueler_kontext(filtered_memberOf):
+def get_schools_dnr_for_create_schueler_kontext(filtered_memberOf, unfiltered_memberOf): #Wenn Schüler aber Klasse Schulbegleiter Zugeordnet, dann ist man nicht Schüler sonern SBGL
     schueler_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('schueler-')]
+    schueler_contexts = [
+        dnr for dnr in schueler_contexts 
+        if not any(um.startswith(f"{dnr}-Schulbegleitung") for um in unfiltered_memberOf)
+    ]
     return schueler_contexts
 
-def get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf):
-    schulbegleitungs_contexts = [mo.split('-', 1)[0] for mo in filtered_memberOf if mo.endswith('-Schulbegleitung')]
-    return schulbegleitungs_contexts
+def get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf, unfiltered_memberOf): #Wenn Schüler aber Klasse Schulbegleiter Zugeordnet, dann ist man nicht Schüler sonern SBGL
+    schueler_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('schueler-')]
+    result = [
+        dnr for dnr in schueler_contexts 
+        if any(um.startswith(f"{dnr}-Schulbegleitung") for um in unfiltered_memberOf)
+    ]
+    return result
 
 def get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf):
     lehrer_contexts = [mo.split('-', 1)[1] for mo in filtered_memberOf if mo.startswith('lehrer-')]
@@ -89,7 +97,8 @@ def convert_data_from_row(row, other_log):
 
 def get_combinded_school_kontexts_to_create_for_person(
     created_person_id,
-    filtered_memberOf, 
+    filtered_memberOf,
+    unfiltered_memberOf,
     roleid_itslearning_sus, 
     roleid_lehrkraft,
     roleid_lehrkraft_ersatz, 
@@ -124,8 +133,8 @@ def get_combinded_school_kontexts_to_create_for_person(
     
     admin_kontexts = get_schools_dnr_for_create_admin_kontext(filtered_memberOf)
     lehrer_kontexts = get_schools_dnr_for_create_lehrer_kontext(filtered_memberOf)
-    schueler_kontexts = get_schools_dnr_for_create_schueler_kontext(filtered_memberOf)
-    schuelbegleitungs_kontexts = get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf)
+    schueler_kontexts = get_schools_dnr_for_create_schueler_kontext(filtered_memberOf, unfiltered_memberOf)
+    schuelbegleitungs_kontexts = get_schools_dnr_for_create_schuelbegleiter_kontext(filtered_memberOf, unfiltered_memberOf)
     combined_school_kontexts = [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': roleid_itslearning_sus, 'type':'SCHUELER'} for dnr in schueler_kontexts]
     combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': getCorrectLehrkaftRolleId(dnr), 'type':'LEHRER'} for dnr in lehrer_kontexts]
     combined_school_kontexts += [{'dnr': dnr, 'orgaId': get_orgaid_by_dnr(school_uuid_dnr_mapping, dnr), 'roleId': getCorrectSchuladminRolleId(dnr), 'type':'ADMIN'} for dnr in admin_kontexts]

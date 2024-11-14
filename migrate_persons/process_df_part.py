@@ -61,7 +61,7 @@ def process_df_part(
                 token_acquisition_time = datetime.now()
         (entry_uuid, email, sn, given_name, kopersnr, username, befristung, hashed_password, memberOf_list) = convert_data_from_row(row, log_other)
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
-        filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admins-')) or mo.endswith('-Schulbegleitung'))]       
+        filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admins-')))]
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
         is_skip_because_iqsh = 'iqsh' in (sn or '').lower()
         is_skip_because_deactive_and_not_lehrer = any(mo for mo in filtered_memberOf if mo.endswith('DeaktivierteKonten')) and not any(mo and 'lehrer-DeaktivierteKonten' in mo for mo in filtered_memberOf)  
@@ -146,7 +146,8 @@ def process_df_part(
         created_person_id = response_create_person.json().get('person', {}).get('id')
         combined_schul_kontexts = get_combinded_school_kontexts_to_create_for_person(
             created_person_id=created_person_id,
-            filtered_memberOf=filtered_memberOf, 
+            filtered_memberOf=filtered_memberOf,
+            unfiltered_memberOf=memberOf_list,
             roleid_itslearning_sus=roleid_itslearning_sus, 
             roleid_lehrkraft=roleid_lehrkraft,
             roleid_lehrkraft_ersatz=roleid_lehrkraft_ersatz,
@@ -191,7 +192,7 @@ def process_df_part(
                 continue
             
             #KLASSEN FÜR JEDEN SCHULKONTEXT ANLEGEN
-            if schul_kontext['roleId'] == roleid_itslearning_sus:
+            if schul_kontext['roleId'] == roleid_itslearning_sus or schul_kontext['roleId'] == roleid_schulbegleitung:
                 klassen_on_school = [mo.split('-', 1)[1].strip() for mo in memberOf_list if mo.startswith(schul_kontext['dnr'])]
                 if(len(klassen_on_school) == 0):
                     log_schueler_on_school_without_klasse.append({
@@ -214,7 +215,7 @@ def process_df_part(
                         person_id=created_person_id, 
                         username=None, 
                         organisation_id=orgaId, 
-                        rolle_id=roleid_itslearning_sus, 
+                        rolle_id=schul_kontext['roleId'], 
                         email=None,
                         befristung_valid_jsdate=befristung_valid_jsdate
                     )
@@ -230,7 +231,7 @@ def process_df_part(
                             'username': username,
                             'person_id': created_person_id,
                             'kontext_orgaId':orgaId,
-                            'kontext_roleId': roleid_itslearning_sus,
+                            'kontext_roleId': schul_kontext['roleId'],
                             'error_response_body': response_create_class_kontext.json(),
                             'status_code': response_create_class_kontext.status_code,
                             'typ': 'KLASSE_API_ERROR'

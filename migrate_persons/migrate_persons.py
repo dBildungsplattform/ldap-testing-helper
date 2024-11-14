@@ -10,7 +10,7 @@ ROLE_NAME_SCHULADMIN_OEFFENTLICH = 'Schuladministrator öffentlich'
 ROLE_NAME_SCHULADMIN_ERSATZ = 'Schuladministrator Ersatzschule'
 ROLE_NAME_LEHRKRAFT = 'Lehrkraft'
 ROLE_NAME_LEHRKRAFT_ERSATZ = 'Ersatzschullehrkraft'
-ROLE_NAME_SCHULBEGLEITUNG = 'Schulbegleitung'
+ROLE_NAME_SCHULBEGLEITUNG = 'itslearning-Schulbegleitung'
                 
 def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, ldap_chunk):
     log(f"Start method migrate_person_data with Input {log_output_dir}, {api_backend_personen}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {api_backend_orga_root_children}, {ldap_chunk}")
