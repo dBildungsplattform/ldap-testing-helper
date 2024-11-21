@@ -245,6 +245,21 @@ def create_kontext_api_call(migration_run_type, api_backend_dbiam_personenkontex
     
     raise Exception("Max retries exceeded. The request failed.")
 
+def enable_itslearning_for_orga_api_call(headers, organisation_base_endpoint, organisation_id):
+    put_data = {}
+    url = f"{organisation_base_endpoint}/{organisation_id}/enable-for-its-learning"
+    attempt = 1
+    while attempt < 5:
+        try:
+            response_create_kontext = requests.put(url, json=put_data, headers=headers)
+            return response_create_kontext
+        except requests.RequestException as e:
+            attempt += 1
+            log(f"Enable Itslearning Request Attempt {attempt} failed: {e}. Retrying...")
+            time.sleep(5*attempt) #Exponential Backoff
+    
+    raise Exception("Max retries exceeded. The request failed.")
+
 
 def chunk_input_file(personsDataInputLDAP):
     temp_file_paths = []  # Store paths instead of file handles

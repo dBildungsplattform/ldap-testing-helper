@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import sys
 import numpy as np
 import pandas as pd
-from helper import create_kontext_api_call, get_access_token, get_orgaid_by_dnr, get_rolle_id, get_school_dnr_uuid_mapping, log, save_to_excel
+from helper import create_kontext_api_call, enable_itslearning_for_orga_api_call, get_access_token, get_orgaid_by_dnr, get_rolle_id, get_school_dnr_uuid_mapping, log, save_to_excel
 from migrate_itslearning_affiliation.itslearning_affiliation_ldif_parser import BuildItslearningGroupsDFLDIFParser
           
 ROLE_NAME_ITSLEARNING_LEHRKRAFT = 'itslearning-Lehrkraft'
@@ -11,7 +11,8 @@ ROLE_NAME_ITSLEARNING_ADMIN = 'itslearning-Administrator'
 def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_personenkontext, api_backend_organisationen, api_backend_rolle, api_backend_orga_root_children, input_ldap_complete_path):
     log(f"Start method migrate_itslearning_affiliation with Input {log_output_dir}, {api_backend_dbiam_personenkontext}, {api_backend_organisationen}, {api_backend_rolle}, {api_backend_orga_root_children}, {input_ldap_complete_path}")
     
-    log_api_errors = []
+    log_create_kontext_api_errors = []
+    log_enable_itslearning_api_errors = []
     log_missing_request_data = []
     number_of_create_kontext_api_calls = 0
     number_of_create_kontext_api_error_responses = 0
@@ -66,6 +67,27 @@ def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_perso
         if(cn.startswith('admins-')):
             rolle_id = rolleid_itslearning_admin
             
+        # Enable its learning For School
+        response_enable_itslearning_for_orga = enable_itslearning_for_orga_api_call(
+            headers=headers,
+            organisation_base_endpoint=api_backend_organisationen,
+            organisation_id=orga_id
+        )
+        if response_enable_itslearning_for_orga.status_code == 401:
+            log(f"Enable-Itslearning-For_Orga-Request - 401 Unauthorized error")
+            sys.exit()
+        elif response_enable_itslearning_for_orga.status_code != 200:
+            number_of_create_kontext_api_error_responses += 1
+            log_enable_itslearning_api_errors.append({
+                'dnr': dnr,
+                'orga_id': orga_id,
+                'error_response_body': response_enable_itslearning_for_orga.json(),
+                'status_code': response_enable_itslearning_for_orga.status_code,
+                'typ':'API_ERROR',
+            })
+            log(f"Enable Itslearning For Orga API Error Response: {response_enable_itslearning_for_orga.json()}")
+          
+        # Add its learning Role to all group members  
         for username in memberUid_list:   
             if(username == None or orga_id == None or rolle_id == None):
                 log_missing_request_data.append({
@@ -94,7 +116,7 @@ def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_perso
                 sys.exit()
             elif response_create_kontext.status_code != 201:
                 number_of_create_kontext_api_error_responses += 1
-                log_api_errors.append({
+                log_create_kontext_api_errors.append({
                 'dnr': dnr,
                 'orga_id': orga_id,
                 'rolle_id':rolle_id,
@@ -118,7 +140,8 @@ def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_perso
     # EXCEL LOGGING   
     log_data = {
         'Skipped_Dueto_Missing_Request_Data': pd.DataFrame(log_missing_request_data),
-        'Failed_Api_Create_Itslearning_Kontexts': pd.DataFrame(log_api_errors)
+        'Failed_Api_Create_Itslearning_Kontexts': pd.DataFrame(log_create_kontext_api_errors),
+        'Failed_Api_Enable_School_Itslearning': pd.DataFrame(log_enable_itslearning_api_errors)
         }
     save_to_excel(log_data, log_output_dir, 'migrate_itslearning_affiliation')
     log("")
