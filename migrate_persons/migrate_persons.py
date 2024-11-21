@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import pandas as pd
 from helper import get_class_name_and_administriertvon_uuid_mapping, get_rolle_id, get_school_dnr_uuid_mapping, log, save_to_excel
@@ -71,6 +72,7 @@ def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_
         'number_of_schueler_without_klassen_skipped_api_calls': 0,
         'number_of_create_person_api_calls': 0,
         'number_of_deactive_lehrer_api_calls': 0,
+        'number_of_deactive_admin_api_calls':0,
         'number_of_create_person_api_error_responses': 0,
         'number_of_create_kontext_api_calls': 0,
         'number_of_create_kontext_api_error_responses': 0,
@@ -88,28 +90,33 @@ def migrate_person_data(log_output_dir, api_backend_personen, api_backend_dbiam_
             else:
                 combined_results[key] += result[key]
     
-    # RUN STATISTICS                                 
-    log("")
-    log("")
-    log("### STANDARD RUN STATISTICS ###")
-    log("")
-    log(f"Number of found Persons: {parser.number_of_found_persons}")
-    log(f"Number of Total Skipped Persons: {combined_results['number_of_total_skipped_api_calls']}")
-    log(f"                Of That FVM-Admin Persons: {combined_results['number_of_fvmadmin_skipped_api_calls']}")
-    log(f"                Of That IQSH Persons: {combined_results['number_of_iqsh_skipped_api_calls']}")
-    log(f"                Of That Deactive Non LehrerPersons: {combined_results['number_of_deactive_skipped_api_calls']}")
-    log(f"                Of That Schueler Without Any Klasse: {combined_results['number_of_schueler_without_klassen_skipped_api_calls']}")
-    log(f"Number of Create-Person API Calls: {combined_results['number_of_create_person_api_calls']}")
-    log(f"                Of That with Befristung: {combined_results['number_of_migrated_persons_with_befristung_found']}")
-    log(f"                Of That Deactive Lehrer Persons: {combined_results['number_of_deactive_lehrer_api_calls']}")
-    log(f"Number of Create-Person API Error Responses: {combined_results['number_of_create_person_api_error_responses']}")
-    log(f"Number of Total Create-Kontext API Calls: {combined_results['number_of_create_kontext_api_calls']}")
-    log(f"                Of That School Kontexts: {combined_results['number_of_create_school_kontext_api_calls']}")
-    log(f"                Of That Class Kontexts: {combined_results['number_of_create_class_kontext_api_calls']}")
-    log(f"Number of TotalCreate-Kontext API Error Responses: {combined_results['number_of_create_kontext_api_error_responses']}")
-    log(f"                Of That School Kontexts: {combined_results['number_of_create_school_kontext_api_error_responses']}")
-    log(f"                Of That Class Kontexts: {combined_results['number_of_create_class_kontext_api_error_responses']}")
-    log("")
+    # RUN STATISTICS 
+    rg = random.randint(10000, 99999) #Random Group Integer (To Group Logs in Grafana)                 
+    log(f"RG{rg} | ")
+    log(f"RG{rg} | ")
+    log(f"RG{rg} | ### PERSONS RUN STATISTICS RG{rg} START ###")
+    log(f"RG{rg} | ")
+    log(f"RG{rg} | Number of found Persons: {parser.number_of_found_persons}")
+    log(f"RG{rg} | Number of Total Skipped Persons: {combined_results['number_of_total_skipped_api_calls']}")
+    log(f"RG{rg} |                 Of That FVM-Admin Persons: {combined_results['number_of_fvmadmin_skipped_api_calls']}")
+    log(f"RG{rg} |                 Of That IQSH Persons: {combined_results['number_of_iqsh_skipped_api_calls']}")
+    log(f"RG{rg} |                 Of That Deactive Non Lehrer or Admin Persons: {combined_results['number_of_deactive_skipped_api_calls']}")
+    log(f"RG{rg} |                 Of That Schueler Without Any Klasse: {combined_results['number_of_schueler_without_klassen_skipped_api_calls']}")
+    log(f"RG{rg} | Number of Create-Person API Calls: {combined_results['number_of_create_person_api_calls']}")
+    log(f"RG{rg} |                 Of That with Befristung: {combined_results['number_of_migrated_persons_with_befristung_found']}")
+    log(f"RG{rg} |                 Of That Deactive Lehrer Persons: {combined_results['number_of_deactive_lehrer_api_calls']}")
+    log(f"RG{rg} |                 Of That Deactive Admin Persons: {combined_results['number_of_deactive_admin_api_calls']}")
+    log(f"RG{rg} | Number of Create-Person API Error Responses: {combined_results['number_of_create_person_api_error_responses']}")
+    log(f"RG{rg} | Number of Total Create-Kontext API Calls: {combined_results['number_of_create_kontext_api_calls']}")
+    log(f"RG{rg} |                 Of That School Kontexts: {combined_results['number_of_create_school_kontext_api_calls']}")
+    log(f"RG{rg} |                 Of That Class Kontexts: {combined_results['number_of_create_class_kontext_api_calls']}")
+    log(f"RG{rg} | Number of TotalCreate-Kontext API Error Responses: {combined_results['number_of_create_kontext_api_error_responses']}")
+    log(f"RG{rg} |                 Of That School Kontexts: {combined_results['number_of_create_school_kontext_api_error_responses']}")
+    log(f"RG{rg} |                 Of That Class Kontexts: {combined_results['number_of_create_class_kontext_api_error_responses']}")
+    log(f"RG{rg} | ")
+    log(f"RG{rg} | ### PERSONS RUN STATISTICS RG{rg} END ###")
+    log(f"RG{rg} | ")
+    log(f"RG{rg} | ")
     
     
     # EXCEL LOGGING   

@@ -35,6 +35,7 @@ def process_df_part(
     number_of_schueler_without_klassen_skipped_api_calls = 0
     number_of_create_person_api_calls = 0
     number_of_deactive_lehrer_api_calls = 0
+    number_of_deactive_admin_api_calls = 0
     number_of_create_person_api_error_responses = 0
     number_of_create_kontext_api_calls = 0
     number_of_create_kontext_api_error_responses = 0
@@ -64,9 +65,9 @@ def process_df_part(
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admins-')))]
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
         is_skip_because_iqsh = 'iqsh' in (sn or '').lower()
-        is_skip_because_deactive_and_not_lehrer = any(mo for mo in filtered_memberOf if mo.endswith('DeaktivierteKonten')) and not any(mo and 'lehrer-DeaktivierteKonten' in mo for mo in filtered_memberOf)  
+        is_skip_because_deactive_and_not_lehrer_or_admin = any(mo for mo in filtered_memberOf if mo.lower().endswith('deaktiviertekonten')) and not any(mo and 'lehrer-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) and not any(mo and 'admins-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) 
         is_skip_because_schueler_without_klasse =  any(mo and 'schueler-' in mo for mo in filtered_memberOf) and not any(mo and 'cn=klassen' in mo for mo in memberOf_raw)       
-        is_skip = is_skip_because_fvmadmin or is_skip_because_iqsh or is_skip_because_deactive_and_not_lehrer or is_skip_because_schueler_without_klasse
+        is_skip = is_skip_because_fvmadmin or is_skip_because_iqsh or is_skip_because_deactive_and_not_lehrer_or_admin or is_skip_because_schueler_without_klasse
         
         #SKIP
         if is_skip == True:
@@ -77,7 +78,7 @@ def process_df_part(
              number_of_schueler_without_klassen_skipped_api_calls) = log_skip(skipped_persons=log_skipped_persons, 
                                                                               is_skip_because_fvmadmin=is_skip_because_fvmadmin, 
                                                                               is_skip_because_iqsh=is_skip_because_iqsh, 
-                                                                              is_skip_because_deactive_and_not_lehrer=is_skip_because_deactive_and_not_lehrer, 
+                                                                              is_skip_because_deactive_and_not_lehrer_or_admin=is_skip_because_deactive_and_not_lehrer_or_admin, 
                                                                               is_skip_because_schueler_without_klasse=is_skip_because_schueler_without_klasse, 
                                                                               number_of_total_skipped_api_calls=number_of_total_skipped_api_calls, 
                                                                               number_of_fvmadmin_skipped_api_calls=number_of_fvmadmin_skipped_api_calls,
@@ -123,8 +124,11 @@ def process_df_part(
             log(f"Create Person API Error Response: {response_create_person.json()}")
             continue
 
-        if any(mo and 'lehrer-DeaktivierteKonten' in mo for mo in filtered_memberOf) is True: #No Kontexts For Deactive Lehrers
+        if any(mo and 'lehrer-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) is True: #No Kontexts For Deactive Lehrers
             number_of_deactive_lehrer_api_calls += 1
+            continue
+        if any(mo and 'admins-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) is True: #No Kontexts For Deactive Admins
+            number_of_deactive_admin_api_calls += 1
             continue
         
         befristung_valid_jsdate = None
@@ -252,6 +256,7 @@ def process_df_part(
         'number_of_schueler_without_klassen_skipped_api_calls': number_of_schueler_without_klassen_skipped_api_calls,
         'number_of_create_person_api_calls': number_of_create_person_api_calls,
         'number_of_deactive_lehrer_api_calls': number_of_deactive_lehrer_api_calls,
+        'number_of_deactive_admin_api_calls':number_of_deactive_admin_api_calls,
         'number_of_create_person_api_error_responses': number_of_create_person_api_error_responses,
         'number_of_create_kontext_api_calls': number_of_create_kontext_api_calls,
         'number_of_create_kontext_api_error_responses': number_of_create_kontext_api_error_responses,

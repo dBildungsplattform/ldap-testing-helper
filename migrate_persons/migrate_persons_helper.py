@@ -52,7 +52,7 @@ def create_person_api_call(api_backend_personen, headers, person_id, sn, given_n
     raise Exception("Max retries exceeded. The request failed.")
 
 def get_orgaid_by_dnr(df, dnr):
-    result = df.loc[df['dnr'] == dnr, 'id']
+    result = df.loc[df['dnr'].str.lower() == dnr.lower(), 'id']
     if not result.empty:
         return result.iloc[0]
     else:
@@ -143,7 +143,7 @@ def get_combinded_school_kontexts_to_create_for_person(
     return combined_school_kontexts
 
 def log_skip(skipped_persons, is_skip_because_fvmadmin, 
-    is_skip_because_iqsh, is_skip_because_deactive_and_not_lehrer, is_skip_because_schueler_without_klasse,
+    is_skip_because_iqsh, is_skip_because_deactive_and_not_lehrer_or_admin, is_skip_because_schueler_without_klasse,
     number_of_total_skipped_api_calls, number_of_fvmadmin_skipped_api_calls,
     number_of_iqsh_skipped_api_calls, number_of_deactive_skipped_api_calls, number_of_schueler_without_klassen_skipped_api_calls,
     username, email, sn, given_name, memberOf_raw):
@@ -156,7 +156,7 @@ def log_skip(skipped_persons, is_skip_because_fvmadmin,
     elif is_skip_because_iqsh:
         status_code = 'NO_MIGRATION_IQSH'
         number_of_iqsh_skipped_api_calls += 1
-    elif is_skip_because_deactive_and_not_lehrer:
+    elif is_skip_because_deactive_and_not_lehrer_or_admin:
         status_code = 'NO_MIGRATION_DEACTIVATED_ACCOUNT'
         number_of_deactive_skipped_api_calls += 1
     elif(is_skip_because_schueler_without_klasse):

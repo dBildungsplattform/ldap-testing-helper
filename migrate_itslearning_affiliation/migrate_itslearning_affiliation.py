@@ -131,11 +131,14 @@ def migrate_itslearning_affiliation_data(log_output_dir, api_backend_dbiam_perso
     
     # RUN STATISTICS      
     log("")
-    log("###STATISTICS###")
+    log("### ITSLEARNING_AFFILIATION RUN STATISTICS START ###")
     log("")
     log(f"Number of found Itslearning Admin or Lehrer Groups: {parser.number_of_found_itslearning_admin_or_lehrer_groups}")
     log(f"Number of API Calls: {number_of_create_kontext_api_calls}")
     log(f'Number of API Error Responses: {number_of_create_kontext_api_error_responses}')
+    log("")
+    log("### ITSLEARNING_AFFILIATION RUN STATISTICS END ###")
+    log("")
         
     # EXCEL LOGGING   
     log_data = {

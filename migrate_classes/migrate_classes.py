@@ -88,11 +88,14 @@ def migrate_class_data(log_output_dir, api_backend_organisationen, api_backend_o
     
     # RUN STATISTICS 
     log("")
-    log("###STATISTICS###")
+    log("### CLASSES RUN STATISTICS START ###")
     log("")
     log(f"Number of found Classes: {len(parser.classes)}")
     log(f"Number of API Calls: {number_of_api_calls}")
     log(f'Number of API Error Responses: {number_of_api_error_responses}')
+    log("")
+    log("### CLASSES RUN STATISTICS END ###")
+    log("")
     
     # EXCEL LOGGING   
     log_data = {

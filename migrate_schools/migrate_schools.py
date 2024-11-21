@@ -87,11 +87,14 @@ def migrate_school_data(log_output_dir, api_backend_organisationen, api_backend_
     
     # RUN STATISTICS 
     log("")
-    log("###STATISTICS###")
+    log("### SCHOOLS RUN STATISTICS START ###")
     log("")
     log(f"Number of found Schools: {parser.number_of_found_schools}")
     log(f"Number of API Calls: {number_of_api_calls}")
     log(f'Number of API Error Responses: {number_of_api_error_responses}')
+    log("")
+    log("### SCHOOLS RUN STATISTICS END ###")
+    log("")
      
     # EXCEL LOGGING    
     log_data = {'Failed_Api_Create_School': pd.DataFrame(log_api_errors)}
