@@ -70,6 +70,8 @@ There is the following SQL script which needs to be run after running the migrat
 - VAR_ROLLE_ID_ITSLEARNING_LEHRER: Replace with actual rolle_id (UUID)
 
 ```sql
+BEGIN;
+
 WITH selected_kontexts AS (
     SELECT *
     FROM public.personenkontext
@@ -95,6 +97,47 @@ JOIN befristung_source bs ON sk.person_id = bs.person_id
 WHERE pk.person_id = sk.person_id
 AND (pk.rolle_Id = sk.rolle_Id)
 AND pk.befristung IS NULL;
+
+COMMIT;
+```
+
+### SQL Skript for Deaktive Lehrer (DeaktivierteKonten)
+
+Deaktive Lehrer are on purpose migrated with a Kontext on the "DeaktivierteKonten" School so they keep their Email-Adress (only reason).
+The following Script needs to run after the migration to disable these mailadresses and delete these kontexts.
+
+- VAR_ORGA_ID_DEACTIVE_SCHOOL: Replace with actual organisation_id (UUID)
+- VAR_ROLLE_ID_OEFFENTLICH_LEHRER: Replace with actual rolle_id (UUID)
+- VAR_ROLLE_ID_ERSATZSCHUL_LEHRER: Replace with actual rolle_id (UUID)
+
+Hint: TargetPersons1 & TargetPersons2 are the same, but need to be defined two times, for the subsequent Statement to have access
+
+```sql
+BEGIN;
+
+-- Update statement
+WITH TargetPersons1 AS (
+    SELECT person_id
+    FROM public.personenkontext2
+    WHERE organisation_id = 'VAR_ORGA_ID_DEACTIVE_SCHOOL' 
+        AND (rolle_id = 'VAR_ROLLE_ID_OEFFENTLICH_LEHRER' OR rolle_id = 'VAR_ROLLE_ID_ERSATZSCHUL_LEHRER')
+)
+UPDATE public.email_address2
+SET status = 'DISABLED'
+WHERE person_id IN (SELECT person_id FROM TargetPersons1);
+
+-- Delete statement
+WITH TargetPersons2 AS (
+    SELECT person_id
+    FROM public.personenkontext2
+    WHERE organisation_id = 'VAR_ORGA_ID_DEACTIVE_SCHOOL' 
+        AND (rolle_id = 'VAR_ROLLE_ID_OEFFENTLICH_LEHRER' OR rolle_id = 'VAR_ROLLE_ID_ERSATZSCHUL_LEHRER')
+)
+DELETE FROM public.personenkontext2
+WHERE person_id IN (SELECT person_id FROM TargetPersons2)
+    AND organisation_id = 'VAR_ORGA_ID_DEACTIVE_SCHOOL';
+
+COMMIT;
 ```
 
 ### SQL Skript For Itslearning Mapping Ids

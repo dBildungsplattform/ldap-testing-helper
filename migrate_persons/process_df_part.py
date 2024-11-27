@@ -124,9 +124,9 @@ def process_df_part(
             log(f"Create Person API Error Response: {response_create_person.json()}")
             continue
 
-        if any(mo and 'lehrer-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) is True: #No Kontexts For Deactive Lehrers
+        if any(mo and 'lehrer-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) is True: #Only for logging
             number_of_deactive_lehrer_api_calls += 1
-            continue
+
         if any(mo and 'admins-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) is True: #No Kontexts For Deactive Admins
             number_of_deactive_admin_api_calls += 1
             continue
