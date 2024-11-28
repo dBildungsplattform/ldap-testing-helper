@@ -118,22 +118,22 @@ BEGIN;
 -- Update statement
 WITH TargetPersons1 AS (
     SELECT person_id
-    FROM public.personenkontext2
+    FROM public.personenkontext
     WHERE organisation_id = 'VAR_ORGA_ID_DEACTIVE_SCHOOL' 
         AND (rolle_id = 'VAR_ROLLE_ID_OEFFENTLICH_LEHRER' OR rolle_id = 'VAR_ROLLE_ID_ERSATZSCHUL_LEHRER')
 )
-UPDATE public.email_address2
+UPDATE public.email_address
 SET status = 'DISABLED'
 WHERE person_id IN (SELECT person_id FROM TargetPersons1);
 
 -- Delete statement
 WITH TargetPersons2 AS (
     SELECT person_id
-    FROM public.personenkontext2
+    FROM public.personenkontext
     WHERE organisation_id = 'VAR_ORGA_ID_DEACTIVE_SCHOOL' 
         AND (rolle_id = 'VAR_ROLLE_ID_OEFFENTLICH_LEHRER' OR rolle_id = 'VAR_ROLLE_ID_ERSATZSCHUL_LEHRER')
 )
-DELETE FROM public.personenkontext2
+DELETE FROM public.personenkontext
 WHERE person_id IN (SELECT person_id FROM TargetPersons2)
     AND organisation_id = 'VAR_ORGA_ID_DEACTIVE_SCHOOL';
 
