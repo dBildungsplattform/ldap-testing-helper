@@ -108,7 +108,10 @@ def get_combinded_school_kontexts_to_create_for_person(
     school_uuid_dnr_mapping
 ):
     def getCorrectLehrkaftRolleId(dnr):
-        school_type_value = school_uuid_dnr_mapping.loc[school_uuid_dnr_mapping['dnr'] == dnr, 'school_type'].values
+        if dnr is None:
+            log("DNR is None, cannot determine CorrectLehrkaftRolleId.")
+            return None
+        school_type_value = school_uuid_dnr_mapping.loc[school_uuid_dnr_mapping['dnr'].str.lower().fillna('') == dnr.lower(), 'school_type'].values
         if school_type_value == None or school_type_value.size == 0 or school_type_value[0] is None:
             log(f"Could Not determine CorrectLehrkaftRolleId for personId: {created_person_id}")
             return None
@@ -120,7 +123,10 @@ def get_combinded_school_kontexts_to_create_for_person(
                 return roleid_lehrkraft
         
     def getCorrectSchuladminRolleId(dnr):
-        school_type_value = school_uuid_dnr_mapping.loc[school_uuid_dnr_mapping['dnr'] == dnr, 'school_type'].values
+        if dnr is None:
+            log("DNR is None, cannot determine CorrectSchuladminRolleId.")
+            return None
+        school_type_value = school_uuid_dnr_mapping.loc[school_uuid_dnr_mapping['dnr'].str.lower().fillna('') == dnr.lower(), 'school_type'].values
         if school_type_value == None or school_type_value.size == 0 or school_type_value[0] is None:
             log(f"Could Not determine CorrectSchuladminRolleId for personId: {created_person_id}")
             return None
