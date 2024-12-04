@@ -64,10 +64,9 @@ def process_df_part(
         memberOf_raw = [singleMemberOf.decode('utf-8') if isinstance(singleMemberOf, bytes) else singleMemberOf for singleMemberOf in row['memberOf']]
         filtered_memberOf = [mo for mo in memberOf_list if (mo.startswith(('lehrer-', 'schueler-', 'admins-')))]
         is_skip_because_fvmadmin = 'fvm-admin' in (sn or '').lower()
-        is_skip_because_iqsh = 'iqsh' in (sn or '').lower()
         is_skip_because_deactive_and_not_lehrer_or_admin = any(mo for mo in filtered_memberOf if mo.lower().endswith('deaktiviertekonten')) and not any(mo and 'lehrer-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) and not any(mo and 'admins-deaktiviertekonten' in mo.lower() for mo in filtered_memberOf) 
         is_skip_because_schueler_without_klasse =  any(mo and 'schueler-' in mo for mo in filtered_memberOf) and not any(mo and 'cn=klassen' in mo for mo in memberOf_raw)       
-        is_skip = is_skip_because_fvmadmin or is_skip_because_iqsh or is_skip_because_deactive_and_not_lehrer_or_admin or is_skip_because_schueler_without_klasse
+        is_skip = is_skip_because_fvmadmin or is_skip_because_deactive_and_not_lehrer_or_admin or is_skip_because_schueler_without_klasse
         
         #SKIP
         if is_skip == True:
@@ -77,7 +76,6 @@ def process_df_part(
              number_of_deactive_skipped_api_calls,
              number_of_schueler_without_klassen_skipped_api_calls) = log_skip(skipped_persons=log_skipped_persons, 
                                                                               is_skip_because_fvmadmin=is_skip_because_fvmadmin, 
-                                                                              is_skip_because_iqsh=is_skip_because_iqsh, 
                                                                               is_skip_because_deactive_and_not_lehrer_or_admin=is_skip_because_deactive_and_not_lehrer_or_admin, 
                                                                               is_skip_because_schueler_without_klasse=is_skip_because_schueler_without_klasse, 
                                                                               number_of_total_skipped_api_calls=number_of_total_skipped_api_calls, 

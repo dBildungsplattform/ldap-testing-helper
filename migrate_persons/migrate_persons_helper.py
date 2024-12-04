@@ -148,8 +148,7 @@ def get_combinded_school_kontexts_to_create_for_person(
     
     return combined_school_kontexts
 
-def log_skip(skipped_persons, is_skip_because_fvmadmin, 
-    is_skip_because_iqsh, is_skip_because_deactive_and_not_lehrer_or_admin, is_skip_because_schueler_without_klasse,
+def log_skip(skipped_persons, is_skip_because_fvmadmin, is_skip_because_deactive_and_not_lehrer_or_admin, is_skip_because_schueler_without_klasse,
     number_of_total_skipped_api_calls, number_of_fvmadmin_skipped_api_calls,
     number_of_iqsh_skipped_api_calls, number_of_deactive_skipped_api_calls, number_of_schueler_without_klassen_skipped_api_calls,
     username, email, sn, given_name, memberOf_raw):
@@ -159,9 +158,6 @@ def log_skip(skipped_persons, is_skip_because_fvmadmin,
     if is_skip_because_fvmadmin:
         status_code = 'NO_MIGRATION_FVM_ADMIN'
         number_of_fvmadmin_skipped_api_calls += 1
-    elif is_skip_because_iqsh:
-        status_code = 'NO_MIGRATION_IQSH'
-        number_of_iqsh_skipped_api_calls += 1
     elif is_skip_because_deactive_and_not_lehrer_or_admin:
         status_code = 'NO_MIGRATION_DEACTIVATED_ACCOUNT'
         number_of_deactive_skipped_api_calls += 1
