@@ -20,5 +20,5 @@ jobs:
       image_tag_generation: 'ticket_from_branch'
       container_registry: "ghcr.io"
       fail_on_vulnerabilites: false
-      report_location: "Dockerfile"
+      report_location: "Dockerfile" 
       add_latest_tag: true
