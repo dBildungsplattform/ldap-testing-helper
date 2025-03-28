@@ -4,22 +4,22 @@ import requests
 from faker import Faker
 
 # === GENERAL Config ===
-DURATION_SECONDS = 600
-ACCESS_TOKEN = ''
+DURATION_SECONDS = 10000000
+ACCESS_COOKIE = os.environ.get('ACCESS_COOKIE')
 
 # === GET Config ===
-WAIT_TIME_MS_GET = 200
-ENDPOINT_GET = "http://localhost:9090/api/personen/43dc90ba-4d6a-4e7b-8cea-fc61c96fdd43"
+WAIT_TIME_MS_GET = 3500
+ENDPOINT_GET = "https://spsh.staging.spsh.dbildungsplattform.de/api/personen/1e8decc9-a2a7-415a-9470-f1dc81ef5b53"
 HEADERS_GET = {
-    'Authorization': 'Bearer ' + ACCESS_TOKEN
+    'Cookie': ACCESS_COOKIE
 }
 
 # === POST Config ===
-WAIT_TIME_MS_POST = 400
-ENDPOINT_POST = "http://localhost:9090/api/personenkontext-workflow"
+WAIT_TIME_MS_POST = 5000
+ENDPOINT_POST = "https://spsh.staging.spsh.dbildungsplattform.de/api/personenkontext-workflow"
 HEADERS_POST = {
     'Content-Type': 'application/json; charset=utf-8',
-    'Authorization': 'Bearer ' + ACCESS_TOKEN
+    'Cookie': ACCESS_COOKIE
 }
 
 faker = Faker("de_DE")
@@ -52,8 +52,8 @@ def call_endpoint_post():
                 "personalnummer": faker.unique.random_number(digits=6, fix_len=True),
                 "createPersonenkontexte": [
                     {
-                    "organisationId": "17aa46ec-eb5f-4efc-b1f5-dafa27d5bf70",
-                    "rolleId": "17c6cc62-4405-4d32-9efd-0bd5e79a2b74"
+                    "organisationId": "2f5c11f5-f319-4365-b93c-bf074dab096c",
+                    "rolleId": "4b4ecff2-2967-4318-8f38-94b337c79d46"
                     }
                 ]
             }
